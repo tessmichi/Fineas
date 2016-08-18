@@ -2,7 +2,7 @@
 
 namespace Fineas.Controllers
 {
-    using Fineas.Models;
+    using Models;
     using System;
     using System.Collections.Generic;
     using System.Data;
@@ -43,70 +43,54 @@ namespace Fineas.Controllers
         
         #endregion Attributes to Refresh
 
-        public static List<FinanceItem> QueryFromData(string time, string type, string item, string alias, DateTime date)
+        public static List<FinanceItem> QueryFromData(string time, string item, string alias, DateTime date)
         {
             List<string> tableOptions = (from tbl in tables
-                                         where tbl.ToUpper().Contains(type.ToUpper())
                                          where tbl.ToUpper().Contains((time.ToUpper() == "MTD") ? "MONTH" : "QTR")
                                          select tbl).ToList();
 
-            string table = tables[0]; // default table TODO handle this better
-
-            if (tableOptions.Count == 1)
-            {
-                table = tableOptions[0];
-            }
-
             List<FinanceItem> res = new List<FinanceItem>();
 
-            try
+            // TODO: ensure there is only one table in tableOptions
+            foreach (string table in tableOptions)
             {
-                res = (from dataRow in _info[table]
-                       where dataRow.Line_Item.Trim() == item
-                       //where dataRow.Fiscal_Year.Trim().Substring(2) == date.Year.ToString().Substring(2) // TODO: this logic is wrong.
-                       where dataRow.Actual_Year == date.Year.ToString()
-                       //where DateTime.Parse(dataRow.Fiscal_Month).Year == date.Year
-                       select dataRow).ToList();
-
-                if (time.Equals("MTD", StringComparison.OrdinalIgnoreCase))
+                try
                 {
-                    res = (from dataRow in res
-                           where DateTime.Parse(dataRow.Fiscal_Month).Month == date.Month
-                           select dataRow).ToList();
-                }
-                else if (time.Equals("QTD", StringComparison.OrdinalIgnoreCase))
-                {
-                    var quarter = (((date.Month-1) / 3) + 3);
-                    quarter = (quarter > 4) ? quarter % 4 : quarter;
+                    List<FinanceItem> temp = new List<FinanceItem>();
 
-                    res = (from dataRow in res
-                           where Convert.ToInt32(dataRow.Fiscal_Quarter.Substring(dataRow.Fiscal_Quarter.Length - 1)) == quarter
+                    temp = (from dataRow in _info[table]
+                           where dataRow.Line_Item.Trim() == item
+                           where dataRow.Actual_Year == date.Year.ToString()
                            select dataRow).ToList();
-                }
 
-                if (type.Equals("Forecast", StringComparison.OrdinalIgnoreCase))
-                {
-                    res = (from dataRow in res
-                           where dataRow.Forecast.Trim() != string.Empty
-                           select dataRow).ToList();
-                }
-                else if (type.Equals("Actual", StringComparison.OrdinalIgnoreCase))
-                {
-                    res = (from dataRow in res
-                           where dataRow.Actual.Trim() != string.Empty
-                           select dataRow).ToList();
-                }
-            }
-            catch (KeyNotFoundException e)
-            {
-                // here is where we tell the user to try the query again.
-            }
-            catch (Exception e)
-            {
+                    if (time.Equals("MTD", StringComparison.OrdinalIgnoreCase))
+                    {
+                        temp = (from dataRow in temp
+                                where DateTime.Parse(dataRow.Fiscal_Month).Month == date.Month
+                               select dataRow).ToList();
+                    }
+                    else if (time.Equals("QTD", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var quarter = (((date.Month - 1) / 3) + 3);
+                        quarter = (quarter > 4) ? quarter % 4 : quarter;
 
+                        temp = (from dataRow in temp
+                               where Convert.ToInt32(dataRow.Fiscal_Quarter.Substring(dataRow.Fiscal_Quarter.Length - 1)) == quarter
+                               select dataRow).ToList();
+                    }
+
+                    res.AddRange(temp);
+                }
+                catch (KeyNotFoundException e)
+                {
+                    // TODO: here is where we tell the user to try the query again.
+                }
+                catch (Exception e)
+                {
+
+                }
             }
             
-
             return res.ToList();
         }
 

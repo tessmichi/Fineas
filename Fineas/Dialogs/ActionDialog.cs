@@ -319,14 +319,6 @@ namespace Fineas.Dialogs
 
             await EnsureHaveData(context, timeframeChoice);
 
-            PromptDialog.Choice(context, ResumeAfterTypeChoice, new List<string>(DataRetriever.DataTypeOptions), "What data type do you want?", "Let's try that again.", 2, PromptStyle.Auto);
-        }
-
-        private async Task ResumeAfterTypeChoice(IDialogContext context, IAwaitable<string> result)
-        {
-            // Given all the choices, redirect to running the query
-            dataTypeChoice = await result;
-
             await RunQuery(context, dataItemChoice);
         }
 
@@ -336,7 +328,7 @@ namespace Fineas.Dialogs
             User user = await GetUser(context, message);
 
             // Run lync on 'cached' data (stored in DataRetriever)
-            currentItems = DataRetriever.QueryFromData(timeframeChoice, dataTypeChoice, dataItemChoice, user.alias, DateTime.Now.AddMonths(-2));
+            currentItems = DataRetriever.QueryFromData(timeframeChoice, dataItemChoice, user.alias, DateTime.Now.AddMonths(-2));
 
             await PrintText(context);
         }
