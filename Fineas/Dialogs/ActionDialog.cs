@@ -111,6 +111,8 @@ namespace Fineas.Dialogs
                 }
                 else
                 {
+                    await PrintCards(context, (Activity)message);
+
                     // TODO: LUIS GOES HERE
 
                     //Activity activity = (Activity)message;
@@ -352,6 +354,45 @@ namespace Fineas.Dialogs
             context.Wait(MessageReceivedAsync);
         }
 
+        private async Task PrintCards(IDialogContext context, Activity message)
+        {
+            if (currentItems.Count == 0)
+            {
+                await context.PostAsync(string.Format("There doesn't seem to be any data here for {0}!", dataItemChoice));
+                context.Wait(MessageReceivedAsync);
+            }
+            else
+            {
+                Activity replyToConversation = message.CreateReply("I found the following data");
+                replyToConversation.Recipient = message.From;
+                replyToConversation.Type = "message";
+                replyToConversation.AttachmentLayout = AttachmentLayoutTypes.Carousel;
+                replyToConversation.Attachments = new List<Attachment>();
+                
+                foreach (FinanceItem item in currentItems)
+                {
+                    List<CardImage> cardImages = new List<CardImage>();
+                    List<CardAction> cardButtons = new List<CardAction>();
+                    HeroCard plCard = new HeroCard()
+                    {
+                        Title = item.ShortString(),
+                        Subtitle = item.ToString(),
+                        Images = cardImages,
+                        Buttons = cardButtons
+                    };
+                    Attachment plAttachment = plCard.ToAttachment();
+                    replyToConversation.Attachments.Add(plAttachment);
+                }
+                replyToConversation.AttachmentLayout = AttachmentLayoutTypes.Carousel;
+                
+                using (var scope = DialogModule.BeginLifetimeScope(Conversation.Container, message))
+                {
+                    var client = scope.Resolve<IConnectorClient>();
+                    var reply = await client.Conversations.SendToConversationAsync(replyToConversation);
+                }
+            }
+        }
+
         private async Task PrintReceipt(IDialogContext context, Activity message)
         {
             if (currentItems.Count == 0)
@@ -361,7 +402,7 @@ namespace Fineas.Dialogs
             }
             else
             {
-                Activity replyToConversation = message.CreateReply("Receipt card");
+                Activity replyToConversation = message.CreateReply("I found the following data");
                 replyToConversation.Recipient = message.From;
                 replyToConversation.Type = "message";
                 replyToConversation.Attachments = new List<Attachment>();
@@ -383,6 +424,17 @@ namespace Fineas.Dialogs
                     };
                     receiptList.Add(lineItem);
                 }
+
+                ReceiptCard plCard = new ReceiptCard()
+                {
+                    Title = "Data you requested",
+                    Buttons = cardButtons,
+                    Items = receiptList,
+                    Total = string.Empty,
+                    Tax = string.Empty
+                };
+                Attachment plAttachment = plCard.ToAttachment();
+                replyToConversation.Attachments.Add(plAttachment);
 
                 using (var scope = DialogModule.BeginLifetimeScope(Conversation.Container, message))
                 {

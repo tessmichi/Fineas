@@ -17,6 +17,8 @@ namespace Fineas.Models
 
         // TODO: these are a bit redundant
         private static List<FieldInfo> _properties = new List<FieldInfo>();
+
+        public static FinanceItem Unknown = new FinanceItem();
         
         public string Team = string.Empty;
         public string Fiscal_Month = string.Empty;
@@ -76,13 +78,11 @@ namespace Fineas.Models
             // TODO: should have children classes with different ToStrings?
 
             StringBuilder build = new StringBuilder();
-            build.Append(string.Format("For line item {0}, {1} {2} for {3}, {4}.",
+            build.Append(string.Format("For line item {0}, {1} {2} for {3}.",
                 Line_Item,
                 Team,
                 (Actual != string.Empty ? string.Format("spent ${0}", NormalizeDollar(Actual)) : string.Format("was allocated ${0}", NormalizeDollar(Forecast))),
-                (Fiscal_Quarter == string.Empty ? Fiscal_Month : Fiscal_Quarter),
-                //(Fiscal_Quarter == string.Empty ? Fiscal_Month : string.Format("{0} ({1})", Fiscal_Month, Fiscal_Quarter)),
-                Fiscal_Year));
+                (Fiscal_Month != string.Empty ? Fiscal_Month : Fiscal_Quarter)));
 
             return build.ToString();
         }

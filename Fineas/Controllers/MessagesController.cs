@@ -8,7 +8,6 @@ namespace Fineas
     using Microsoft.Bot.Builder.Dialogs.Internals;
     using Microsoft.Bot.Connector;
     using System.Net.Http;
-    using System.Text.RegularExpressions;
     using System.Threading.Tasks;
     using System.Web.Http;
 
@@ -29,7 +28,6 @@ namespace Fineas
             }
             else if (activity != null)
             {
-                IConversationUpdateActivity update = activity;
                 using (var scope = DialogModule.BeginLifetimeScope(Conversation.Container, activity))
                 {
                     var client = scope.Resolve<IConnectorClient>();
@@ -38,35 +36,7 @@ namespace Fineas
             }
             return new HttpResponseMessage(System.Net.HttpStatusCode.Accepted);
         }
-
-        private IDialog<string> GetSwitch()
-        {
-            var toBot = from mess in Chain.PostToChain() select mess.Text;
-
-            var logic =
-                toBot
-                .Switch
-                (
-                    new RegexCase<string>(new Regex("^hello"), (cont, text) =>
-                    {
-                        return "world!";
-                    }),
-                    new Case<string, string>((txt) => txt == "world", (cont, text) =>
-                    {
-                        return "!";
-                    }),
-                    new DefaultCase<string, string>((cont, text) =>
-                    {
-                        return text;
-                    }
-                )
-            );
-
-            var toUser = logic.PostToUser();
-
-            return toUser;
-        }
-
+        
         private Activity HandleSystemMessage(Activity message)
         {
             if (message.Type == ActivityTypes.Ping)
