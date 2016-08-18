@@ -30,11 +30,7 @@ namespace Fineas.Dialogs
         private string dataItemChoice = string.Empty;
 
         List<FinanceItem> currentItems = new List<FinanceItem>();
-
-        // TODO: fix code to not need this globally
-        //[NonSerialized]
-        //private Activity activityMan;
-
+        
         public const string INSTRUCTIONS = "Try one of my commands: help, logout, login, who, query, refresh.";
 
         public async Task StartAsync(IDialogContext context)
@@ -111,19 +107,10 @@ namespace Fineas.Dialogs
                 }
                 else
                 {
-                    await PrintCards(context, (Activity)message);
+                    //await PrintCards(context, (Activity)message);
 
                     // TODO: LUIS GOES HERE
-
-                    //Activity activity = (Activity)message;
-
-                    //IConversationUpdateActivity update = activity;
-                    //using (var scope = DialogModule.BeginLifetimeScope(Conversation.Container, activity))
-                    //{
-                    //    var client = scope.Resolve<IConnectorClient>();
-                    //    await client.Conversations.ReplyToActivityAsync(GetSwitch(context));
-                    //}
-
+                    
                     // Tell user we don't know what to do here, and end this dialog
                     await context.PostAsync(string.Format("Sorry, '{0}' is not a choice. {1}", message.Text, INSTRUCTIONS));
                     context.Wait(MessageReceivedAsync);
@@ -332,7 +319,7 @@ namespace Fineas.Dialogs
             // Run lync on 'cached' data (stored in DataRetriever)
             currentItems = DataRetriever.QueryFromData(timeframeChoice, dataItemChoice, user.alias, DateTime.Now.AddMonths(-2));
 
-            await PrintText(context);
+            await PrintCards(context);
         }
 
         private async Task PrintText(IDialogContext context)
@@ -354,8 +341,10 @@ namespace Fineas.Dialogs
             context.Wait(MessageReceivedAsync);
         }
 
-        private async Task PrintCards(IDialogContext context, Activity message)
+        private async Task PrintCards(IDialogContext context)
         {
+            Activity message = (Activity)context.MakeMessage();
+
             if (currentItems.Count == 0)
             {
                 await context.PostAsync(string.Format("There doesn't seem to be any data here for {0}!", dataItemChoice));
@@ -384,63 +373,16 @@ namespace Fineas.Dialogs
                     replyToConversation.Attachments.Add(plAttachment);
                 }
                 replyToConversation.AttachmentLayout = AttachmentLayoutTypes.Carousel;
-                
+
+                // Post response and end this dialog
+                //await context.PostAsync(replyToConversation);
+                //context.Wait(MessageReceivedAsync);
                 using (var scope = DialogModule.BeginLifetimeScope(Conversation.Container, message))
                 {
                     var client = scope.Resolve<IConnectorClient>();
                     var reply = await client.Conversations.SendToConversationAsync(replyToConversation);
                 }
-            }
-        }
-
-        private async Task PrintReceipt(IDialogContext context, Activity message)
-        {
-            if (currentItems.Count == 0)
-            {
-                await context.PostAsync(string.Format("There doesn't seem to be any data here for {0}!", dataItemChoice));
                 context.Wait(MessageReceivedAsync);
-            }
-            else
-            {
-                Activity replyToConversation = message.CreateReply("I found the following data");
-                replyToConversation.Recipient = message.From;
-                replyToConversation.Type = "message";
-                replyToConversation.Attachments = new List<Attachment>();
-                List<CardImage> cardImages = new List<CardImage>();
-                List<CardAction> cardButtons = new List<CardAction>();
-                List<ReceiptItem> receiptList = new List<ReceiptItem>();
-
-                foreach (FinanceItem item in currentItems)
-                {
-                    ReceiptItem lineItem = new ReceiptItem()
-                    {
-                        Title = item.ShortString(),
-                        Subtitle = item.ToString(),
-                        Text = "",
-                        Image = null,
-                        Price = "",
-                        Quantity = "",
-                        Tap = null
-                    };
-                    receiptList.Add(lineItem);
-                }
-
-                ReceiptCard plCard = new ReceiptCard()
-                {
-                    Title = "Data you requested",
-                    Buttons = cardButtons,
-                    Items = receiptList,
-                    Total = string.Empty,
-                    Tax = string.Empty
-                };
-                Attachment plAttachment = plCard.ToAttachment();
-                replyToConversation.Attachments.Add(plAttachment);
-
-                using (var scope = DialogModule.BeginLifetimeScope(Conversation.Container, message))
-                {
-                    var client = scope.Resolve<IConnectorClient>();
-                    var reply = await client.Conversations.SendToConversationAsync(replyToConversation);
-                }
             }
         }
 

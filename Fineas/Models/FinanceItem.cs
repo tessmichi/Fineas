@@ -11,11 +11,9 @@ namespace Fineas.Models
     public class FinanceItem
     {
         // TODO: make sure the website showing this api is safe
-        // don't send the user stack dumps or exeption data
         // TODO: web.config to hide website from any user that isnt the bot
         // web exploit check tools online against my url
-
-        // TODO: these are a bit redundant
+        
         private static List<FieldInfo> _properties = new List<FieldInfo>();
 
         public static FinanceItem Unknown = new FinanceItem();
@@ -34,7 +32,6 @@ namespace Fineas.Models
         {
             get
             {
-                // TODO: FIX DATABASE TO NOT HAVE Y2K BUG OMFG
                 string yearRaw = string.Format("January, 20{0}", Fiscal_Year.Substring(2));
                 var year = DateTime.Parse(yearRaw).AddYears(1).Year.ToString();
 
@@ -62,12 +59,6 @@ namespace Fineas.Models
             }
         }
 
-        //public string Budget = string.Empty;
-        //public string Function_Detail = string.Empty;
-        //public string Org = string.Empty;
-        //public string Line_Item_Security = string.Empty; // TODO: not in Qtr section?
-        //public string Dx_Team = string.Empty;
-
         public FinanceItem()
         {
 
@@ -75,8 +66,6 @@ namespace Fineas.Models
 
         public override string ToString()
         {
-            // TODO: should have children classes with different ToStrings?
-
             StringBuilder build = new StringBuilder();
             build.Append(string.Format("For line item {0}, {1} {2} for {3}.",
                 Line_Item,
@@ -94,8 +83,6 @@ namespace Fineas.Models
 
         public string ShortString()
         {
-            // TODO: should have children classes with different ToStrings?
-
             StringBuilder build = new StringBuilder();
             build.Append(string.Format("{0}'s {1} Report for {2}",
                 Team,

@@ -96,7 +96,6 @@ namespace Fineas.Controllers
 
         public static void DeleteAllData()
         {
-            // TODO: explicitely clean out old data?
             _info.Clear();
             TimeframeOptions = new string[0];
             DataTypeOptions = new string[0];

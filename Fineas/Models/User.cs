@@ -19,7 +19,7 @@ namespace Fineas.Models
         public string alias = string.Empty;
 
         public static User Unknown = new User();
-        public static string CORP_DOMAIN = ""; // TODO: check if it's ok that this isn't const
+        public static string CORP_DOMAIN = "";
 
         private User()
         {
