@@ -2,10 +2,7 @@
 Fineas is an experimental, unofficial, open source C# bot that aims to provide financial assistance for budgeting. Intended audience: Team Leads.
 
 ##Add on Skype
-https://join.skype.com/bot/41b08395-a988-46ee-9ff2-f93382bc0086
-
-##Add on Telegram
-@Fineas_bot
+@FineasBot
 
 ##Notes
 Please feel free to add issues here on github to represent any bugs you find or features you'd like to see! Please use the proper labels.
