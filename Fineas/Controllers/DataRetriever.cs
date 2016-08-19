@@ -19,11 +19,9 @@ namespace Fineas.Controllers
 
         // TODO: sql parameters
         private static string qryGeneral = "select a.*, b.[Dx Team] from {0} a, FTEList_Team b where a.TEAM = b.TEAM AND upper(b.Email) = upper('{1}')";
-        private static string qryLineItems = "select distinct [line item] from vw_BotSummaryByMonthActuals"; // TODO: this shouldn't be hardcoded to a table
-        private static string[] tables = {  "vw_BotSummaryByMonthActuals",
-                                            "vw_BotSummaryByMonthForecast",
-                                            "vw_BotSummaryByQtrActuals",
-                                            "vw_BotSummaryByQtrForecast"};
+        private static string qryLineItems = "select distinct [line item] from securitylineitem where definition != ''";
+        private static string[] tables = {  "BotSummaryByMonth",
+                                            "BotSummaryByQtr"};
 
         private static Dictionary<string, List<FinanceItem>> _info = new Dictionary<string, List<FinanceItem>>();
 
@@ -45,6 +43,7 @@ namespace Fineas.Controllers
 
         public static List<FinanceItem> QueryFromData(string time, string item, string alias, DateTime date)
         {
+            // Only query from either month or quarter but not both or neither
             List<string> tableOptions = (from tbl in tables
                                          where tbl.ToUpper().Contains((time.ToUpper() == "MTD") ? "MONTH" : "QTR")
                                          select tbl).ToList();
@@ -56,16 +55,16 @@ namespace Fineas.Controllers
             {
                 try
                 {
-                    List<FinanceItem> temp = new List<FinanceItem>();
+                    List<FinanceItem> filteredRows = new List<FinanceItem>();
 
-                    temp = (from dataRow in _info[table]
+                    filteredRows = (from dataRow in _info[table]
                            where dataRow.Line_Item.Trim() == item
                            where dataRow.Actual_Year == date.Year.ToString()
                            select dataRow).ToList();
 
                     if (time.Equals("MTD", StringComparison.OrdinalIgnoreCase))
                     {
-                        temp = (from dataRow in temp
+                        filteredRows = (from dataRow in filteredRows
                                 where DateTime.Parse(dataRow.Fiscal_Month).Month == date.Month
                                select dataRow).ToList();
                     }
@@ -74,12 +73,12 @@ namespace Fineas.Controllers
                         var quarter = (((date.Month - 1) / 3) + 3);
                         quarter = (quarter > 4) ? quarter % 4 : quarter;
 
-                        temp = (from dataRow in temp
+                        filteredRows = (from dataRow in filteredRows
                                where Convert.ToInt32(dataRow.Fiscal_Quarter.Substring(dataRow.Fiscal_Quarter.Length - 1)) == quarter
                                select dataRow).ToList();
                     }
 
-                    res.AddRange(temp);
+                    res.AddRange(filteredRows);
                 }
                 catch (KeyNotFoundException e)
                 {
@@ -205,8 +204,12 @@ namespace Fineas.Controllers
 
                                         if (index >= 0 && index < reader.FieldCount)
                                         {
-                                            string value = reader.GetValue(index).ToString().Trim();
-                                            col.SetValue(item, value);
+                                            var temp = reader.GetValue(index);
+                                            if (temp != null)
+                                            {
+                                                string value = temp.ToString().Trim();
+                                                col.SetValue(item, value);
+                                            }
                                         }
                                     }
                                     catch (IndexOutOfRangeException e)

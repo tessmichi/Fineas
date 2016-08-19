@@ -321,26 +321,7 @@ namespace Fineas.Dialogs
 
             await PrintCards(context);
         }
-
-        private async Task PrintText(IDialogContext context)
-        {
-            // Print out all the returned data objects
-            StringBuilder str = new StringBuilder();
-
-            if (currentItems.Count == 0)
-            {
-                str.Append(string.Format("There doesn't seem to be any data here for {0}!", dataItemChoice));
-            }
-            else foreach (FinanceItem item in currentItems)
-            {
-                str.Append(string.Format("{0}\r\n", item.ToString()));
-            }
-
-            // Post response and end this dialog
-            await context.PostAsync(str.ToString());
-            context.Wait(MessageReceivedAsync);
-        }
-
+        
         private async Task PrintCards(IDialogContext context)
         {
             Activity message = (Activity)context.MakeMessage();
@@ -360,17 +341,20 @@ namespace Fineas.Dialogs
                 
                 foreach (FinanceItem item in currentItems)
                 {
-                    List<CardImage> cardImages = new List<CardImage>();
-                    List<CardAction> cardButtons = new List<CardAction>();
-                    HeroCard plCard = new HeroCard()
+                    foreach (KeyValuePair<string,string> summary in item.GetSummaries())
                     {
-                        Title = item.ShortString(),
-                        Subtitle = item.ToString(),
-                        Images = cardImages,
-                        Buttons = cardButtons
-                    };
-                    Attachment plAttachment = plCard.ToAttachment();
-                    replyToConversation.Attachments.Add(plAttachment);
+                        List<CardImage> cardImages = new List<CardImage>();
+                        List<CardAction> cardButtons = new List<CardAction>();
+                        HeroCard plCard = new HeroCard()
+                        {
+                            Title = summary.Key,
+                            Subtitle = summary.Value,
+                            Images = cardImages,
+                            Buttons = cardButtons
+                        };
+                        Attachment plAttachment = plCard.ToAttachment();
+                        replyToConversation.Attachments.Add(plAttachment);
+                    }
                 }
                 replyToConversation.AttachmentLayout = AttachmentLayoutTypes.Carousel;
 

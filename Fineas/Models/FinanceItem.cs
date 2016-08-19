@@ -15,6 +15,8 @@ namespace Fineas.Models
         // web exploit check tools online against my url
         
         private static List<FieldInfo> _properties = new List<FieldInfo>();
+        private static string SHORT_STRING = "{0}'s {1} Report for {2}";
+        private static string LONG_STRING = "For line item {0}, {1} {2} for {3}.";
 
         public static FinanceItem Unknown = new FinanceItem();
         
@@ -26,6 +28,7 @@ namespace Fineas.Models
 
         public string Actual = string.Empty;
         public string Forecast = string.Empty;
+        public string VTF = string.Empty;
 
         // this one is not in the database so the "setters" for month and quarter set this variable
         public string Actual_Year
@@ -64,35 +67,51 @@ namespace Fineas.Models
 
         }
 
+        // <short, long>
+        public Dictionary<string,string> GetSummaries()
+        {
+            Dictionary<string, string> summaries = new Dictionary<string, string>();
+
+            // Forecast
+            summaries.Add(
+                string.Format(SHORT_STRING,
+                    Team, 
+                    "Forecast",
+                    Line_Item),
+                string.Format(LONG_STRING,
+                    Line_Item,
+                    Team,
+                    string.Format("was allocated ${0}", NormalizeDollar(Forecast)),
+                    (Fiscal_Month != string.Empty ? Fiscal_Month : Fiscal_Quarter)));
+
+            // Actual
+            summaries.Add(
+                string.Format(SHORT_STRING,
+                    Team,
+                    "Actual",
+                    Line_Item),
+                string.Format(LONG_STRING,
+                    Line_Item,
+                    Team,
+                    string.Format("spent ${0}", NormalizeDollar(Actual)),
+                    (Fiscal_Month != string.Empty ? Fiscal_Month : Fiscal_Quarter)));
+
+            // Variance (to forecast)
+            summaries.Add(
+                string.Format(SHORT_STRING,
+                    Team,
+                    "Variance to Forecast",
+                    Line_Item),
+                string.Format(LONG_STRING,
+                    Line_Item,
+                    Team,
+                    string.Format("varies to forecast by ${0}", NormalizeDollar(VTF)),
+                    (Fiscal_Month != string.Empty ? Fiscal_Month : Fiscal_Quarter)));
+
+            return summaries;
+        }
+
         public override string ToString()
-        {
-            StringBuilder build = new StringBuilder();
-            build.Append(string.Format("For line item {0}, {1} {2} for {3}.",
-                Line_Item,
-                Team,
-                (Actual != string.Empty ? string.Format("spent ${0}", NormalizeDollar(Actual)) : string.Format("was allocated ${0}", NormalizeDollar(Forecast))),
-                (Fiscal_Month != string.Empty ? Fiscal_Month : Fiscal_Quarter)));
-
-            return build.ToString();
-        }
-
-        private string NormalizeDollar(string num)
-        {
-            return Convert.ToDouble(num).ToString("0.00");
-        }
-
-        public string ShortString()
-        {
-            StringBuilder build = new StringBuilder();
-            build.Append(string.Format("{0}'s {1} Report for {2}",
-                Team,
-                (Actual != string.Empty ? "Actual" : "Forecast"),
-                Line_Item));
-
-            return build.ToString();
-        }
-
-        public string DataString()
         {
             StringBuilder build = new StringBuilder();
 
@@ -106,6 +125,11 @@ namespace Fineas.Models
             }
 
             return build.ToString();
+        }
+
+        private string NormalizeDollar(string num)
+        {
+            return Convert.ToDouble(num).ToString("0.00");
         }
 
         public static void SetProperties()
