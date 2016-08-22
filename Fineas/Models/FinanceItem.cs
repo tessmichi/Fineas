@@ -4,6 +4,7 @@ namespace Fineas.Models
 {
     using System;
     using System.Collections.Generic;
+    using System.Globalization;
     using System.Reflection;
     using System.Text;
 
@@ -72,17 +73,21 @@ namespace Fineas.Models
         {
             Dictionary<string, string> summaries = new Dictionary<string, string>();
 
+            string time = (Fiscal_Month != string.Empty ? Fiscal_Month : Fiscal_Quarter);
+
             // Forecast
             summaries.Add(
                 string.Format(SHORT_STRING,
                     Team, 
                     "Forecast",
                     Line_Item),
-                string.Format(LONG_STRING,
-                    Line_Item,
-                    Team,
-                    string.Format("was allocated ${0}", NormalizeDollar(Forecast)),
-                    (Fiscal_Month != string.Empty ? Fiscal_Month : Fiscal_Quarter)));
+                Forecast == string.Empty ?
+                    $"Could not parse database entry for {time}" :
+                    string.Format(LONG_STRING,
+                        Line_Item,
+                        Team,
+                        string.Format("was allocated {0}", NormalizeDollar(Forecast)),
+                        time));
 
             // Actual
             summaries.Add(
@@ -90,11 +95,13 @@ namespace Fineas.Models
                     Team,
                     "Actual",
                     Line_Item),
-                string.Format(LONG_STRING,
-                    Line_Item,
-                    Team,
-                    string.Format("spent ${0}", NormalizeDollar(Actual)),
-                    (Fiscal_Month != string.Empty ? Fiscal_Month : Fiscal_Quarter)));
+                Actual == string.Empty ?
+                    $"Could not parse database entry for {time}" :
+                    string.Format(LONG_STRING,
+                        Line_Item,
+                        Team,
+                        string.Format("spent {0}", NormalizeDollar(Actual)),
+                        time));
 
             // Variance (to forecast)
             summaries.Add(
@@ -102,11 +109,13 @@ namespace Fineas.Models
                     Team,
                     "Variance to Forecast",
                     Line_Item),
-                string.Format(LONG_STRING,
-                    Line_Item,
-                    Team,
-                    string.Format("varies to forecast by ${0}", NormalizeDollar(VTF)),
-                    (Fiscal_Month != string.Empty ? Fiscal_Month : Fiscal_Quarter)));
+                VTF == string.Empty ?
+                    $"Could not parse database entry for {time}" :
+                    string.Format(LONG_STRING,
+                        Line_Item,
+                        Team,
+                        string.Format("varies to forecast by {0}", NormalizeDollar(VTF)),
+                        time));
 
             return summaries;
         }
@@ -129,7 +138,15 @@ namespace Fineas.Models
 
         private string NormalizeDollar(string num)
         {
-            return Convert.ToDouble(num).ToString("0.00");
+            decimal ret = 0.0M;
+
+            if (!decimal.TryParse(num, NumberStyles.Any, CultureInfo.InvariantCulture, out ret))
+            {
+                // This prints out the unformatted number, raw from the database
+                return $"${num}";
+            }
+            
+            return $"${ret.ToString("#,##0.00")}";
         }
 
         public static void SetProperties()
