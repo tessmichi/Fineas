@@ -28,6 +28,7 @@ namespace Fineas.Dialogs
         private string timeframeChoice = string.Empty;
         private string dataTypeChoice = string.Empty;
         private string dataItemChoice = string.Empty;
+        private DateTime timeRange = DateTime.Now;
 
         List<FinanceItem> currentItems = new List<FinanceItem>();
         
@@ -88,9 +89,20 @@ namespace Fineas.Dialogs
                 }
                 else if (string.Equals(message.Text, "query", StringComparison.OrdinalIgnoreCase))
                 {
+                    timeRange = DateTime.Parse("June, 2016");
+
                     // context is handled inside this method
                     await TryQueryDatabase(context, message);
-                    //GetSwitch(context, message);
+                }
+                else if (message.Text.StartsWith("query", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!DateTime.TryParse(message.Text.Substring(message.Text.IndexOf(' ')), out timeRange))
+                    {
+                        timeRange = DateTime.Now;
+                    }
+
+                    // context is handled inside this method
+                    await TryQueryDatabase(context, message);
                 }
                 else if (string.Equals(message.Text, "refresh", StringComparison.OrdinalIgnoreCase))
                 {
@@ -317,7 +329,7 @@ namespace Fineas.Dialogs
             User user = await GetUser(context, message);
 
             // Run lync on 'cached' data (stored in DataRetriever)
-            currentItems = DataRetriever.QueryFromData(timeframeChoice, dataItemChoice, user.alias, DateTime.Now.AddMonths(-2));
+            currentItems = DataRetriever.QueryFromData(timeframeChoice, dataItemChoice, user.alias, timeRange);
 
             await PrintCards(context);
         }
