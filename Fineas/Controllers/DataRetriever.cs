@@ -13,19 +13,23 @@ namespace Fineas.Controllers
     [Serializable]
     public class DataRetriever
     {
+        // TODO: sql parameters
+        private static string qryGeneral = "select a.*, b.[Dx Team] from {0} a, FTEList_Team b where a.TEAM = b.TEAM AND upper(b.Email) = upper('{1}')";
+        private static string qryLineItems = "select distinct [line item], definition from securitylineitem where definition != ''";
+        private static string[] tables = {  "BotSummaryByMonth",
+                                            "BotSummaryByQtr" };
+
+        public const int AMT_MIN_CHECK_REFRESH = -5;
+
         #region Attributes to Refresh
 
         private static DateTime lastRefresh = DateTime.MinValue;
 
-        // TODO: sql parameters
-        private static string qryGeneral = "select a.*, b.[Dx Team] from {0} a, FTEList_Team b where a.TEAM = b.TEAM AND upper(b.Email) = upper('{1}')";
-        private static string qryLineItems = "select distinct [line item] from securitylineitem where definition != ''";
-        private static string[] tables = {  "BotSummaryByMonth",
-                                            "BotSummaryByQtr"};
+        private static Dictionary<string, List<FinanceItem>> cachedResults = new Dictionary<string, List<FinanceItem>>();
+        public static Dictionary<string, string> LineItemDescriptions = new Dictionary<string, string>();
 
-        private static Dictionary<string, List<FinanceItem>> _info = new Dictionary<string, List<FinanceItem>>();
-
-        public const int AMT_MIN_CHECK_REFRESH = -5;
+        public static string[] TimeframeOptions = new string[0];
+        public static string[] DataTypeOptions = new string[0];
 
         public static DateTime LastRefresh
         {
@@ -35,10 +39,6 @@ namespace Fineas.Controllers
             }
         }
 
-        public static string[] TimeframeOptions = new string[0];
-        public static string[] DataTypeOptions = new string[0];
-        public static List<string> DataItemOptions = new List<string>();
-        
         #endregion Attributes to Refresh
 
         public static List<FinanceItem> QueryFromData(string time, string item, string alias, DateTime date)
@@ -57,7 +57,7 @@ namespace Fineas.Controllers
                 {
                     List<FinanceItem> filteredRows = new List<FinanceItem>();
 
-                    filteredRows = (from dataRow in _info[table]
+                    filteredRows = (from dataRow in cachedResults[table]
                            where dataRow.Line_Item.Trim() == item
                            where dataRow.Actual_Year == date.Year.ToString()
                            select dataRow).ToList();
@@ -95,10 +95,10 @@ namespace Fineas.Controllers
 
         public static void DeleteAllData()
         {
-            _info.Clear();
+            cachedResults.Clear();
             TimeframeOptions = new string[0];
             DataTypeOptions = new string[0];
-            DataItemOptions.Clear();
+            LineItemDescriptions.Clear();
         }
 
         public static void GetAllData(string alias)
@@ -111,16 +111,15 @@ namespace Fineas.Controllers
                 GetDataForTable(table, alias);
             }
 
-            SetOptions();
+            SetMetaOptions();
         }
 
         #region Methods to Refresh / Get
 
-        private static void SetOptions()
+        private static void SetMetaOptions()
         {
             SetTimeOptions();
-            SetTypeOptions();
-            SetItemOptions();
+            SetItemDetails();
         }
         
         private static void SetTimeOptions()
@@ -131,18 +130,10 @@ namespace Fineas.Controllers
             TimeframeOptions = ops;
         }
 
-        private static void SetTypeOptions()
-        {
-            // TODO: not hardcode
-
-            string[] ops = { "Forecast", "Actual" };
-            DataTypeOptions = ops;
-        }
-
-        private static void SetItemOptions()
+        private static void SetItemDetails()
         {
             DataTable sqlTable = new DataTable();
-            List<string> options = new List<string>();
+            LineItemDescriptions.Clear();
 
             using (SqlConnection connection = new SqlConnection(SqlDb.GetConnectionString()))
             {
@@ -155,10 +146,37 @@ namespace Fineas.Controllers
                     {
                         while (reader.Read())
                         {
-                            FinanceItem item = new FinanceItem();
-                            
-                            string value = reader.GetValue(0).ToString().Trim();
-                            options.Add(value);
+                            try
+                            {
+                                // TODO: maybe this should be an object
+                                int indexLineItem = reader.GetOrdinal("LINE ITEM");
+                                int indexLineItemDescription = reader.GetOrdinal("definition");
+                                string lineItem = string.Empty, lineItemDesc = string.Empty;
+
+                                if (indexLineItem >= 0 && indexLineItem < reader.FieldCount)
+                                {
+                                    var temp = reader.GetValue(indexLineItem);
+                                    if (temp != null)
+                                    {
+                                        lineItem = temp.ToString().Trim();
+                                    }
+                                }
+                                else continue;
+                                if (indexLineItemDescription >= 0 && indexLineItemDescription < reader.FieldCount)
+                                {
+                                    var temp = reader.GetValue(indexLineItemDescription);
+                                    if (temp != null)
+                                    {
+                                        lineItemDesc = temp.ToString().Trim();
+                                    }
+                                }
+                                else continue;
+
+                                LineItemDescriptions.Add(lineItem, lineItemDesc);
+                            }
+                            catch (IndexOutOfRangeException e)
+                            {
+                            }
                         }
                     }
                     finally
@@ -168,14 +186,12 @@ namespace Fineas.Controllers
                     }
                 }
             }
-
-            DataItemOptions = options;
         }
 
         private static void GetDataForTable(string table, string alias)
         {
             DataTable sqlTable = new DataTable();
-            _info.Add(table, new List<FinanceItem>());
+            cachedResults.Add(table, new List<FinanceItem>());
             List<string> colsToIgnore = new List<string>();
 
             using (SqlConnection connection = new SqlConnection(SqlDb.GetConnectionString()))
@@ -220,7 +236,7 @@ namespace Fineas.Controllers
                                 }
                             }
 
-                            _info[table].Add(item);
+                            cachedResults[table].Add(item);
                         }
                     }
                     finally

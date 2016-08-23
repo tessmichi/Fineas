@@ -13,10 +13,7 @@ namespace Fineas.Dialogs
     using Models;
     using System;
     using System.Collections.Generic;
-    using System.Linq;
     using System.Net.Http;
-    using System.Text;
-    using System.Text.RegularExpressions;
     using System.Threading;
     using System.Threading.Tasks;
 
@@ -25,12 +22,10 @@ namespace Fineas.Dialogs
     [Serializable]
     public class ActionDialog : IDialog<string>
     {
-        private string timeframeChoice = string.Empty;
-        private string dataTypeChoice = string.Empty;
         private string dataItemChoice = string.Empty;
         private DateTime timeRange = DateTime.Now;
 
-        List<FinanceItem> currentItems = new List<FinanceItem>();
+        private List<FinanceItem> currentItems = new List<FinanceItem>();
         
         public const string INSTRUCTIONS = "Try one of my commands: help, logout, login, who, query, refresh.";
 
@@ -72,7 +67,7 @@ namespace Fineas.Dialogs
                     if (string.IsNullOrEmpty(userToken))
                     {
                         // Take user to login thread
-                        await context.Forward(new AzureAuthDialog(AuthSettings.Scopes), ResumeAfterAuth, message, CancellationToken.None);
+                        await context.Forward(new AzureAuthDialog(AuthSettings.Scopes), ResumeAfterAuthAsync, message, CancellationToken.None);
                     }
                     else
                     {
@@ -85,44 +80,48 @@ namespace Fineas.Dialogs
                 else if (string.Equals(message.Text, "who", StringComparison.OrdinalIgnoreCase))
                 {
                     // context is handled inside this method
-                    await TryGiveUsername(context, message.Text);
+                    await TryGiveUsernameAsync(context, message.Text);
                 }
                 else if (string.Equals(message.Text, "query", StringComparison.OrdinalIgnoreCase))
                 {
                     timeRange = DateTime.Parse("June, 2016");
 
                     // context is handled inside this method
-                    await TryQueryDatabase(context, message);
+                    await TryQueryDatabaseAsync(context, message);
                 }
                 else if (message.Text.StartsWith("query", StringComparison.OrdinalIgnoreCase))
                 {
+                    // Try to read date from user or else default to today
                     if (!DateTime.TryParse(message.Text.Substring(message.Text.IndexOf(' ')), out timeRange))
                     {
+                        // TODO: is this the best way to handle it? or should we treat this as an unrecognized command?
+                        await context.PostAsync("Using today's date because couldn't understand what you said.");
+                        context.Wait(MessageReceivedAsync);
+
                         timeRange = DateTime.Now;
                     }
 
                     // context is handled inside this method
-                    await TryQueryDatabase(context, message);
+                    await TryQueryDatabaseAsync(context, message);
                 }
                 else if (string.Equals(message.Text, "refresh", StringComparison.OrdinalIgnoreCase))
                 {
-                    await Refresh(context, message.ToString(), true);
+                    // Refresh cached data
+                    await RefreshAsync(context, true);
 
                     // End this dialog
                     context.Wait(MessageReceivedAsync);
                 }
                 else if (IsPreviousButton(message.Text))
                 {
-                    // That request is out of date, try starting a new query
+                    // In this scenario, the user has selected a button they are not currently in the dialog for
                     await context.PostAsync(string.Format("Sorry, that question is outdated. Try querying again.", INSTRUCTIONS));
                     context.Wait(MessageReceivedAsync);
                 }
                 else
                 {
-                    //await PrintCards(context, (Activity)message);
+                    // TODO: put LUIS interpretation here
 
-                    // TODO: LUIS GOES HERE
-                    
                     // Tell user we don't know what to do here, and end this dialog
                     await context.PostAsync(string.Format("Sorry, '{0}' is not a choice. {1}", message.Text, INSTRUCTIONS));
                     context.Wait(MessageReceivedAsync);
@@ -135,57 +134,25 @@ namespace Fineas.Dialogs
                 context.Wait(MessageReceivedAsync);
             }
         }
-
-        private void GetSwitch(IDialogContext context, IMessageActivity message)
-        {
-            var toBot = from mess in Chain.PostToChain() select mess.Text;
-
-            var logic =
-                toBot
-                .Switch
-                (
-                    new RegexCase<string>(new Regex("^hello"), (cont, text) =>
-                    {
-                        return "world!";
-                    }),
-                    new Case<string, string>((txt) => txt == "world", (cont, text) =>
-                    {
-                        return "!";
-                    }),
-                    new DefaultCase<string, string>((cont, text) =>
-                    {
-                        return text;
-                    }
-                )
-            );
-
-            var toUser = logic.PostToUser();
-
-            context.Call(toUser, ResumeNothing);
-        }
-
-        private async Task ResumeNothing(IDialogContext context, IAwaitable<string> result)
-        {
-            await context.PostAsync("Coolio");
-            context.Wait(MessageReceivedAsync);
-        }
-
+        
         private bool IsPreviousButton(string text)
         {
             // This should check the response as existing in every possible list of responses.
+            // TODO: i think at some states, these might not be filled in and so we get false negatives.
+            // need a way to handle this in the message sent to the user.
 
             return (new List<string>(DataRetriever.TimeframeOptions).Contains(text)
                 || new List<string>(DataRetriever.DataTypeOptions).Contains(text)
-                || DataRetriever.DataItemOptions.Contains(text));
+                || DataRetriever.LineItemDescriptions.ContainsKey(text));
         }
 
-        private async Task Refresh(IDialogContext context, string message, bool alertWhenDone = false)
+        private async Task RefreshAsync(IDialogContext context, bool alertWhenDone = false)
         {
             // Warn user there will be some lag
             await context.PostAsync("Hold on, refreshing against the database.");
 
             // Check current user and refresh data based off their credentials
-            User user = await GetUser(context, message);
+            User user = await GetUserAsync(context);
             DataRetriever.GetAllData(user.alias);
 
             // Post response
@@ -195,10 +162,10 @@ namespace Fineas.Dialogs
             }
         }
 
-        private async Task TryGiveUsername(IDialogContext context, string message)
+        private async Task TryGiveUsernameAsync(IDialogContext context, string message)
         {
             // Get current user
-            User user = await GetUser(context, message);
+            User user = await GetUserAsync(context, message);
             
             // Make response saying who user is
             string res = string.IsNullOrEmpty(user.token) ?
@@ -212,52 +179,50 @@ namespace Fineas.Dialogs
             context.Wait(MessageReceivedAsync);
         }
         
-        private async Task TryQueryDatabase(IDialogContext context, IMessageActivity message)
+        private async Task TryQueryDatabaseAsync(IDialogContext context, IMessageActivity message)
         {
             // Check if the user is from @microsoft.com or else kick their butt
-            User user = await GetUser(context, message.Text);
-            //activityMan = (Activity)message;
+            User user = await GetUserAsync(context, message.Text);
             if (user.VerifyUser())
             {
-                await EnsureHaveData(context, message.Text);
+                await EnsureHaveDataAsync(context);
 
                 // If haven't refreshed in the last x minutes, then ask for verification
                 if (DataRetriever.LastRefresh < DateTime.Now.AddMinutes(DataRetriever.AMT_MIN_CHECK_REFRESH))
                 {
-                    PromptDialog.Confirm(context, ResumeIfVerifyQuery, string.Format("The last time this data was refreshed was {0}. Is that ok?", DataRetriever.LastRefresh.ToShortTimeString()), "Let's try that again.", 2, PromptStyle.Auto);
+                    PromptDialog.Confirm(context, ResumeIfVerifyRefresh, string.Format("The last time this data was refreshed was {0}. Use old data?", DataRetriever.LastRefresh.ToShortTimeString()), "Let's try that again.", 2, PromptStyle.Auto);
                 }
                 else
                 {
                     // If we have refreshed in the last x minutes, then go right to the questions
-                    PromptDialog.Choice(context, ResumeAfterItemChoice, DataRetriever.DataItemOptions, "What expense category do you want?", "Let's try that again.", 2, PromptStyle.Auto);
+                    await GetLineItemChoiceAsync(context);
                 }
-
-                //await PrintReceipt(context, (Activity)message);
             }
             else
             {
                 // ..kick their butt
                 // Post response and end this dialog
+                // TODO: add funny image here
                 await context.PostAsync("You shouldn't be in here.");
                 context.Wait(MessageReceivedAsync);
             }
         }
 
-        private async Task EnsureHaveData(IDialogContext context, string message)
+        private async Task EnsureHaveDataAsync(IDialogContext context)
         {
             // Make sure we do have data cached
             if (DataRetriever.TimeframeOptions.Length == 0)
             {
-                await Refresh(context, message.ToString());
+                await RefreshAsync(context);
             }
         }
 
-        private async Task ResumeAfterAuth(IDialogContext context, IAwaitable<string> result)
+        private async Task ResumeAfterAuthAsync(IDialogContext context, IAwaitable<string> result)
         {
             var message = await result;
 
             // Get current user and refresh data based on their credentials
-            User user = await GetUser(context, message);
+            User user = await GetUserAsync(context, message);
             DataRetriever.GetAllData(user.alias);
 
             // Tell user they are authenticated
@@ -267,7 +232,7 @@ namespace Fineas.Dialogs
             context.Wait(MessageReceivedAsync);
         }
         
-        private async Task<User> GetUser(IDialogContext context, string message, bool login = false)
+        private async Task<User> GetUserAsync(IDialogContext context, string message = "", bool login = false)
         {
             // TODO: check context and see if the token matches the one from the message
 
@@ -278,7 +243,7 @@ namespace Fineas.Dialogs
             if (login)
                 while (string.IsNullOrEmpty(userToken))
                 {
-                    await context.Forward(new AzureAuthDialog(AuthSettings.Scopes), ResumeAfterAuth, message, CancellationToken.None);
+                    await context.Forward(new AzureAuthDialog(AuthSettings.Scopes), ResumeAfterAuthAsync, message, CancellationToken.None);
                     userToken = await context.GetAccessToken(AuthSettings.Scopes);
                 }
 
@@ -288,27 +253,99 @@ namespace Fineas.Dialogs
 
         #region Query Chain
 
-        private async Task ResumeIfVerifyQuery(IDialogContext context, IAwaitable<bool> result)
+        private async Task ResumeIfVerifyRefresh(IDialogContext context, IAwaitable<bool> result)
         {
+            // Get response on whether or not user is ok with old data
             bool message = await result;
 
+            // If they are not ok with old data, refresh it
             if (!message)
             {
-                await Refresh(context, message.ToString());
+                await RefreshAsync(context);
             }
 
-            await EnsureHaveData(context, timeframeChoice);
+            // Make sure data is filled
+            await EnsureHaveDataAsync(context);
 
             // Start dialog to get user's filters for query
-            PromptDialog.Choice(context, ResumeAfterItemChoice, DataRetriever.DataItemOptions, "What expense category do you want?", "Let's try that again.", 2, PromptStyle.Auto);
+            await GetLineItemChoiceAsync(context);
         }
 
-        private async Task ResumeAfterItemChoice(IDialogContext context, IAwaitable<string> result)
+        private async Task GetLineItemChoiceAsync(IDialogContext context)
         {
-            // Given data item choice, get time choice
-            dataItemChoice = await result;
-            
-            await EnsureHaveData(context, timeframeChoice);
+            // Make a new message since we cannot access the original message sent from the user
+            Activity message = (Activity)context.MakeMessage();
+
+            // Design this message as a reply to the user
+            Activity replyToConversation = message.CreateReply("Which expense category do you want to use?");
+            replyToConversation.Recipient = message.From;
+            replyToConversation.Type = "message";
+
+            // This will have a list of information which we want to display as a carousel of hero cards
+            replyToConversation.AttachmentLayout = AttachmentLayoutTypes.Carousel;
+            replyToConversation.Attachments = new List<Attachment>();
+
+            // For each line item and each line item description, print a hero card
+            foreach (string key in DataRetriever.LineItemDescriptions.Keys)
+            {
+                List<CardImage> cardImages = new List<CardImage>();
+                List<CardAction> cardButtons = new List<CardAction>();
+
+                // TODO: actually add button
+                CardAction button = new CardAction()
+                {
+                    Type = "imBack",
+                    Title = "Choose",
+                    Value = key
+                };
+                cardButtons.Add(button);
+
+                HeroCard plCard = new HeroCard()
+                {
+                    Title = key,
+                    Subtitle = DataRetriever.LineItemDescriptions[key],
+                    Images = cardImages,
+                    Buttons = cardButtons
+                };
+                Attachment plAttachment = plCard.ToAttachment();
+                replyToConversation.Attachments.Add(plAttachment);
+            }
+            replyToConversation.AttachmentLayout = AttachmentLayoutTypes.Carousel;
+
+            // Post options to user so they can select one
+            using (var scope = DialogModule.BeginLifetimeScope(Conversation.Container, message))
+            {
+                var client = scope.Resolve<IConnectorClient>();
+                var reply = await client.Conversations.SendToConversationAsync(replyToConversation);
+            }
+
+            // Read response from user
+            PromptDialog.Text(context, GetLineItemChoice, "Please choose one");
+        }
+
+        private async Task GetLineItemChoice(IDialogContext context, IAwaitable<string> result)
+        {
+            // Given timeframe choice, get data type choice
+            string choice = await result;
+
+            if (!DataRetriever.LineItemDescriptions.ContainsKey(choice))
+            {
+                await context.PostAsync(string.Format("Sorry, '{0}' is not a choice. {1}", choice, INSTRUCTIONS));
+                context.Wait(MessageReceivedAsync);
+
+                return;
+            }
+
+            // Save the option the user selected
+            dataItemChoice = choice;
+
+            // Now ask which timeframe choice they want
+            await GetTimeFrameChoice(context);
+        }
+
+        private async Task GetTimeFrameChoice(IDialogContext context)
+        {
+            await EnsureHaveDataAsync(context);
 
             PromptDialog.Choice(context, ResumeAfterTimeChoice, new List<string>(DataRetriever.TimeframeOptions), "What timeframe do you want?", "Let's try that again.", 2, PromptStyle.Auto);
         }
@@ -316,31 +353,31 @@ namespace Fineas.Dialogs
         private async Task ResumeAfterTimeChoice(IDialogContext context, IAwaitable<string> result)
         {
             // Given timeframe choice, get data type choice
-            timeframeChoice = await result;
+            string timeframeChoice = await result;
 
-            await EnsureHaveData(context, timeframeChoice);
+            await EnsureHaveDataAsync(context);
 
-            await RunQuery(context, dataItemChoice);
+            await RunQuery(context, timeframeChoice);
         }
 
-        private async Task RunQuery(IDialogContext context, string message)
+        private async Task RunQuery(IDialogContext context, string timeframeChoice)
         {
             // Verify current user
-            User user = await GetUser(context, message);
+            User user = await GetUserAsync(context);
 
             // Run lync on 'cached' data (stored in DataRetriever)
             currentItems = DataRetriever.QueryFromData(timeframeChoice, dataItemChoice, user.alias, timeRange);
 
-            await PrintCards(context);
+            await PrintCards(context, dataItemChoice);
         }
         
-        private async Task PrintCards(IDialogContext context)
+        private async Task PrintCards(IDialogContext context, string lineItem)
         {
             Activity message = (Activity)context.MakeMessage();
 
             if (currentItems.Count == 0)
             {
-                await context.PostAsync(string.Format("There doesn't seem to be any data here for {0}!", dataItemChoice));
+                await context.PostAsync(string.Format("There doesn't seem to be any data here for {0} within {1}!", lineItem, timeRange.ToShortDateString()));
                 context.Wait(MessageReceivedAsync);
             }
             else
