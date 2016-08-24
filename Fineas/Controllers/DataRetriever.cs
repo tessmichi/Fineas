@@ -114,6 +114,11 @@ namespace Fineas.Controllers
             SetMetaOptions();
         }
 
+        public static bool HaveData()
+        {
+            return cachedResults.Count > 0 && LineItemDescriptions.Count > 0;
+        }
+
         #region Methods to Refresh / Get
 
         private static void SetMetaOptions()

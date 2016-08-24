@@ -28,6 +28,7 @@ namespace Fineas.Dialogs
         private List<FinanceItem> currentItems = new List<FinanceItem>();
         
         public const string INSTRUCTIONS = "Try one of my commands: help, logout, login, who, query, refresh.";
+        private const int MAX_CARDS_CAROUSEL = 4;
 
         public async Task StartAsync(IDialogContext context)
         {
@@ -185,18 +186,21 @@ namespace Fineas.Dialogs
             User user = await GetUserAsync(context, message.Text);
             if (user.VerifyUser())
             {
-                await EnsureHaveDataAsync(context);
-
-                // If haven't refreshed in the last x minutes, then ask for verification
-                if (DataRetriever.LastRefresh < DateTime.Now.AddMinutes(DataRetriever.AMT_MIN_CHECK_REFRESH))
+                if (await EnsureHaveDataAsync(context))
                 {
-                    PromptDialog.Confirm(context, ResumeIfVerifyRefresh, string.Format("The last time this data was refreshed was {0}. Use old data?", DataRetriever.LastRefresh.ToShortTimeString()), "Let's try that again.", 2, PromptStyle.Auto);
+                    // If haven't refreshed in the last x minutes, then ask for verification
+                    if (DataRetriever.LastRefresh < DateTime.Now.AddMinutes(DataRetriever.AMT_MIN_CHECK_REFRESH))
+                    {
+                        PromptDialog.Confirm(context, ResumeIfVerifyRefresh, string.Format("The last time this data was refreshed was {0}. Use old data?", DataRetriever.LastRefresh.ToShortTimeString()), "Let's try that again.", 2, PromptStyle.Auto);
+                    }
+                    else
+                    {
+                        // If we have refreshed in the last x minutes, then go right to the questions
+                        await GetLineItemChoiceAsync(context);
+                    }
                 }
                 else
-                {
-                    // If we have refreshed in the last x minutes, then go right to the questions
-                    await GetLineItemChoiceAsync(context);
-                }
+                    context.Wait(MessageReceivedAsync);
             }
             else
             {
@@ -208,13 +212,21 @@ namespace Fineas.Dialogs
             }
         }
 
-        private async Task EnsureHaveDataAsync(IDialogContext context)
+        private async Task<bool> EnsureHaveDataAsync(IDialogContext context)
         {
             // Make sure we do have data cached
-            if (DataRetriever.TimeframeOptions.Length == 0)
+            if (!DataRetriever.HaveData())
             {
+                await context.PostAsync("Looks like my data is gone.");
                 await RefreshAsync(context);
             }
+
+            if (!DataRetriever.HaveData())
+            {
+                await context.PostAsync("Couldn't find data...Please try again later.");
+            }
+
+            return DataRetriever.HaveData();
         }
 
         private async Task ResumeAfterAuthAsync(IDialogContext context, IAwaitable<string> result)
@@ -265,60 +277,71 @@ namespace Fineas.Dialogs
             }
 
             // Make sure data is filled
-            await EnsureHaveDataAsync(context);
-
-            // Start dialog to get user's filters for query
-            await GetLineItemChoiceAsync(context);
+            if (await EnsureHaveDataAsync(context))
+                // Start dialog to get user's filters for query
+                await GetLineItemChoiceAsync(context);
+            else
+                context.Wait(MessageReceivedAsync);
         }
 
         private async Task GetLineItemChoiceAsync(IDialogContext context)
         {
-            // Make a new message since we cannot access the original message sent from the user
-            Activity message = (Activity)context.MakeMessage();
-
-            // Design this message as a reply to the user
-            Activity replyToConversation = message.CreateReply("Which expense category do you want to use?");
-            replyToConversation.Recipient = message.From;
-            replyToConversation.Type = "message";
-
-            // This will have a list of information which we want to display as a carousel of hero cards
-            replyToConversation.AttachmentLayout = AttachmentLayoutTypes.Carousel;
-            replyToConversation.Attachments = new List<Attachment>();
-
-            // For each line item and each line item description, print a hero card
-            foreach (string key in DataRetriever.LineItemDescriptions.Keys)
+            for (int i = 0; i < DataRetriever.LineItemDescriptions.Keys.Count; i+=4)
             {
-                List<CardImage> cardImages = new List<CardImage>();
-                List<CardAction> cardButtons = new List<CardAction>();
+                List<string> keys = new List<string>(DataRetriever.LineItemDescriptions.Keys)
+                    .GetRange(i, Math.Min(MAX_CARDS_CAROUSEL, DataRetriever.LineItemDescriptions.Keys.Count-i));
 
-                // TODO: actually add button
-                CardAction button = new CardAction()
+                // Make a new message since we cannot access the original message sent from the user
+                Activity message = (Activity)context.MakeMessage();
+
+                // Design this message as a reply to the user
+                Activity replyToConversation = message.CreateReply(
+                    i == 0 ?
+                    "Which expense category do you want to use?" :
+                    "I found some more options you can choose from!");
+                replyToConversation.Recipient = message.From;
+                replyToConversation.Type = "message";
+
+                // This will have a list of information which we want to display as a carousel of hero cards
+                replyToConversation.AttachmentLayout = AttachmentLayoutTypes.Carousel;
+                replyToConversation.Attachments = new List<Attachment>();
+
+                // For each line item and each line item description, print a hero card
+                foreach (string key in keys)
                 {
-                    Type = "imBack",
-                    Title = "Choose",
-                    Value = key
-                };
-                cardButtons.Add(button);
+                    //await context.PostAsync($"Doing key = {key}");
+                    List<CardImage> cardImages = new List<CardImage>();
+                    List<CardAction> cardButtons = new List<CardAction>();
 
-                HeroCard plCard = new HeroCard()
+                    // Add the button
+                    CardAction button = new CardAction()
+                    {
+                        Type = "imBack",
+                        Title = "Choose",
+                        Value = key
+                    };
+                    cardButtons.Add(button);
+
+                    HeroCard plCard = new HeroCard()
+                    {
+                        Title = key,
+                        Subtitle = DataRetriever.LineItemDescriptions[key],
+                        Images = cardImages,
+                        Buttons = cardButtons
+                    };
+                    Attachment plAttachment = plCard.ToAttachment();
+                    replyToConversation.Attachments.Add(plAttachment);
+                }
+                replyToConversation.AttachmentLayout = AttachmentLayoutTypes.Carousel;
+
+                // Post options to user so they can select one
+                using (var scope = DialogModule.BeginLifetimeScope(Conversation.Container, message))
                 {
-                    Title = key,
-                    Subtitle = DataRetriever.LineItemDescriptions[key],
-                    Images = cardImages,
-                    Buttons = cardButtons
-                };
-                Attachment plAttachment = plCard.ToAttachment();
-                replyToConversation.Attachments.Add(plAttachment);
+                    var client = scope.Resolve<IConnectorClient>();
+                    var reply = await client.Conversations.SendToConversationAsync(replyToConversation);
+                }
             }
-            replyToConversation.AttachmentLayout = AttachmentLayoutTypes.Carousel;
-
-            // Post options to user so they can select one
-            using (var scope = DialogModule.BeginLifetimeScope(Conversation.Container, message))
-            {
-                var client = scope.Resolve<IConnectorClient>();
-                var reply = await client.Conversations.SendToConversationAsync(replyToConversation);
-            }
-
+            
             // Read response from user
             PromptDialog.Text(context, GetLineItemChoice, "Please choose one");
         }
@@ -330,7 +353,7 @@ namespace Fineas.Dialogs
 
             if (!DataRetriever.LineItemDescriptions.ContainsKey(choice))
             {
-                await context.PostAsync(string.Format("Sorry, '{0}' is not a choice. {1}", choice, INSTRUCTIONS));
+                await context.PostAsync(string.Format("Sorry, '{0}' makes no sense to me right now. Let's start from scratch! {1}", choice, INSTRUCTIONS));
                 context.Wait(MessageReceivedAsync);
 
                 return;
@@ -345,9 +368,10 @@ namespace Fineas.Dialogs
 
         private async Task GetTimeFrameChoice(IDialogContext context)
         {
-            await EnsureHaveDataAsync(context);
-
-            PromptDialog.Choice(context, ResumeAfterTimeChoice, new List<string>(DataRetriever.TimeframeOptions), "What timeframe do you want?", "Let's try that again.", 2, PromptStyle.Auto);
+            if (await EnsureHaveDataAsync(context))
+                PromptDialog.Choice(context, ResumeAfterTimeChoice, new List<string>(DataRetriever.TimeframeOptions), "What timeframe do you want?", "Let's try that again.", 2, PromptStyle.Auto);
+            else
+                context.Wait(MessageReceivedAsync);
         }
 
         private async Task ResumeAfterTimeChoice(IDialogContext context, IAwaitable<string> result)
@@ -355,9 +379,10 @@ namespace Fineas.Dialogs
             // Given timeframe choice, get data type choice
             string timeframeChoice = await result;
 
-            await EnsureHaveDataAsync(context);
-
-            await RunQuery(context, timeframeChoice);
+            if (await EnsureHaveDataAsync(context))
+                await RunQuery(context, timeframeChoice);
+            else
+                context.Wait(MessageReceivedAsync);
         }
 
         private async Task RunQuery(IDialogContext context, string timeframeChoice)
@@ -382,7 +407,8 @@ namespace Fineas.Dialogs
             }
             else
             {
-                Activity replyToConversation = message.CreateReply("I found the following data");
+                Activity replyToConversation = message.CreateReply(
+                    $"I found the following data, last refreshed {DataRetriever.LastRefresh.ToString("hh:mm MM/dd/yyyy")}");
                 replyToConversation.Recipient = message.From;
                 replyToConversation.Type = "message";
                 replyToConversation.AttachmentLayout = AttachmentLayoutTypes.Carousel;
