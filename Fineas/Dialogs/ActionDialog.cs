@@ -204,10 +204,9 @@ namespace Fineas.Dialogs
                     else
                     {
                         // If we have refreshed in the last x minutes, then go right to the questions
-                        //await GetLineItemChoiceAsync(context);
+                        await GetLineItemChoiceAsync(context);
 
-                        //context.Call(QueryDialog.BuildDialog(null, null), RunQuery);
-                        CallQueryDialog(context);
+                        //CallQueryDialog(context);
                     }
                 }
                 else
@@ -299,14 +298,13 @@ namespace Fineas.Dialogs
             // Make sure data is filled
             if (await EnsureHaveDataAsync(context))
                 // Start dialog to get user's filters for query
-                //await GetLineItemChoiceAsync(context);
-                //context.Call(QueryDialog.BuildDialog(null, null), RunQuery);
-                CallQueryDialog(context);
+                await GetLineItemChoiceAsync(context);
+                //CallQueryDialog(context);
             else
                 context.Wait(MessageReceivedAsync);
         }
 
-        /*private async Task GetLineItemChoiceAsync(IDialogContext context)
+        private async Task GetLineItemChoiceAsync(IDialogContext context)
         {
             for (int i = 0; i < DataRetriever.LineItemDescriptions.Keys.Count; i+=4)
             {
@@ -416,7 +414,7 @@ namespace Fineas.Dialogs
             currentItems = DataRetriever.QueryFromData(timeframeChoice, dataItemChoice, user.alias, timeRange);
 
             await PrintCards(context, dataItemChoice);
-        }*/
+        }
 
         private async Task RunQuery(IDialogContext context, IAwaitable<QueryForm> formAwaitable)
         {
@@ -425,14 +423,19 @@ namespace Fineas.Dialogs
             // Verify current user
             User user = await GetUserAsync(context);
 
-            // Run lync on 'cached' data (stored in DataRetriever)
-            currentItems = DataRetriever.QueryFromData(formState.TimePeriod, formState.ExpenseCategory, user.alias, timeRange);
+            if (await EnsureHaveDataAsync(context))
+            {
+                // Run lync on 'cached' data (stored in DataRetriever)
+                currentItems = DataRetriever.QueryFromData(formState.TimePeriod, formState.ExpenseCategory, user.alias, timeRange);
 
-            await PrintCards(context, formState.ExpenseCategory);
+                await PrintCards(context, formState.ExpenseCategory);
 
-            // Clear databag data
-            context.PrivateConversationData.RemoveValue(EXPENSE_ENTITY);
-            context.PrivateConversationData.RemoveValue(TIME_ENTITY);
+                // Clear databag data
+                context.PrivateConversationData.RemoveValue(EXPENSE_ENTITY);
+                context.PrivateConversationData.RemoveValue(TIME_ENTITY);
+            }
+            else
+                context.Wait(MessageReceivedAsync);
         }
         
         private async Task PrintCards(IDialogContext context, string lineItem)
