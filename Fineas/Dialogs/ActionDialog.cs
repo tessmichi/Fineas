@@ -28,7 +28,7 @@ namespace Fineas.Dialogs
 
         private List<FinanceItem> currentItems = new List<FinanceItem>();
         
-        public const string INSTRUCTIONS = "Try one of my commands: help, logout, login, who, query, refresh.";
+        public const string INSTRUCTIONS = "Try one of my commands: help, logout, login, who, query, refresh. Or try something else!";
         private const int MAX_CARDS_CAROUSEL = 4;
 
         private const string EXPENSE_ENTITY = "ExpenseCategory";
