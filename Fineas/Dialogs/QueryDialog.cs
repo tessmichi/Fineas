@@ -14,12 +14,43 @@ namespace Fineas.Dialogs
     {
         public static IDialog<QueryForm> BuildDialog(string expenseCategory, string timePeriod)
         {
-            /*QueryForm startForm = new QueryForm()
+            string expenseMatch = ClosestMatch(DataRetriever.LineItemDescriptions.Keys.ToArray(), expenseCategory);
+            string timeMatch = BestTimeMatch(timePeriod);
+            QueryForm startForm = new QueryForm()
             {
                 ExpenseCategory = expenseMatch,
                 TimePeriod = timeMatch
-            };*/
-            return new FormDialog<QueryForm>(new QueryForm(), QueryForm.BuildForm, FormOptions.PromptInStart);
+            };
+            return new FormDialog<QueryForm>(startForm, QueryForm.BuildForm, FormOptions.PromptInStart);
+        }
+
+        // TODO: Better time matching... or don't separate it
+        private static string BestTimeMatch(string input)
+        {
+            if (input == null)
+                return null;
+
+            if (input.IndexOf("qtd", StringComparison.OrdinalIgnoreCase) >= 0 || input.IndexOf("quarter", StringComparison.OrdinalIgnoreCase) >= 0)
+                return "QTD";
+            else if (input.IndexOf("mtd", StringComparison.OrdinalIgnoreCase) >= 0 || input.IndexOf("month", StringComparison.OrdinalIgnoreCase) >= 0)
+                return "MTD";
+
+            return null;
+        }
+
+        // TODO: Better matching algorithm
+        private static string ClosestMatch(string[] matches, string input)
+        {
+            if (input == null)
+                return null;
+
+            foreach (var match in matches)
+            {
+                if (match.IndexOf(input, StringComparison.OrdinalIgnoreCase) >= 0 || input.IndexOf(match, StringComparison.OrdinalIgnoreCase) >= 0)
+                    return match;
+            }
+
+            return null;
         }
     }
 

@@ -13,6 +13,7 @@ namespace Fineas.Dialogs
     using Models;
     using System;
     using System.Collections.Generic;
+    using System.Linq;
     using System.Net.Http;
     using System.Threading;
     using System.Threading.Tasks;
@@ -30,6 +31,10 @@ namespace Fineas.Dialogs
         public const string INSTRUCTIONS = "Try one of my commands: help, logout, login, who, query, refresh.";
         private const int MAX_CARDS_CAROUSEL = 4;
 
+        private const string EXPENSE_ENTITY = "ExpenseCategory";
+        private const string TIME_ENTITY = "TimePeriod";
+
+
         public async Task StartAsync(IDialogContext context)
         {
             context.Wait(MessageReceivedAsync);
@@ -45,87 +50,90 @@ namespace Fineas.Dialogs
                     message.Text.Remove(message.Text.IndexOf(tag), tag.Length).Trim() :
                     message.Text.Trim();
 
-                if (string.Equals(message.Text, "help", StringComparison.OrdinalIgnoreCase))
-                {
-                    // Give list of options
-                    // Post response and end this dialog
-                    await context.PostAsync(string.Format("Ask me a question about your budget, and I will do my best to give you the answer you need. {0}", INSTRUCTIONS));
-                    context.Wait(MessageReceivedAsync);
-                }
-                else if (string.Equals(message.Text, "logout", StringComparison.OrdinalIgnoreCase))
-                {
-                    // Make sure nothing is "cached"
-                    DataRetriever.DeleteAllData();
+                var luisResponse = await LuisHelper.ParseUserInput(message.Text);
+                var bestIntent = luisResponse.Intents.Aggregate((currMax, x) => (currMax == null || x.Score > currMax.Score ? x : currMax));
 
-                    // Logout and end this dialog
-                    await context.Logout();
-                    context.Wait(MessageReceivedAsync);
-                }
-                else if (string.Equals(message.Text, "login", StringComparison.OrdinalIgnoreCase))
+                switch(bestIntent.Intent)
                 {
-                    // Check to see if user token is filled, meaning they're logged in
-                    string userToken = await context.GetAccessToken(AuthSettings.Scopes);
-                    if (string.IsNullOrEmpty(userToken))
-                    {
-                        // Take user to login thread
-                        await context.Forward(new AzureAuthDialog(AuthSettings.Scopes), ResumeAfterAuthAsync, message, CancellationToken.None);
-                    }
-                    else
-                    {
-                        // Can't login if already logged in
+                    case "Refresh":
+                        // Refresh cached data
+                        await RefreshAsync(context, true);
+
+                        // End this dialog
+                        context.Wait(MessageReceivedAsync);
+                        break;
+
+                    case "Help":
+                        // Give list of options
                         // Post response and end this dialog
-                        await context.PostAsync("You are already logged in.");
+                        await context.PostAsync(string.Format("Ask me a question about your budget, and I will do my best to give you the answer you need. {0}", INSTRUCTIONS));
                         context.Wait(MessageReceivedAsync);
-                    }
-                }
-                else if (string.Equals(message.Text, "who", StringComparison.OrdinalIgnoreCase))
-                {
-                    // context is handled inside this method
-                    await TryGiveUsernameAsync(context, message.Text);
-                }
-                else if (string.Equals(message.Text, "query", StringComparison.OrdinalIgnoreCase))
-                {
-                    timeRange = DateTime.Parse("June, 2016");
+                        break;
 
-                    // context is handled inside this method
-                    await TryQueryDatabaseAsync(context, message);
-                }
-                else if (message.Text.StartsWith("query", StringComparison.OrdinalIgnoreCase))
-                {
-                    // Try to read date from user or else default to today
-                    if (!DateTime.TryParse(message.Text.Substring(message.Text.IndexOf(' ')), out timeRange))
-                    {
-                        // TODO: is this the best way to handle it? or should we treat this as an unrecognized command?
-                        await context.PostAsync("Using today's date because couldn't understand what you said.");
+                    case "Log In":
+                        // Check to see if user token is filled, meaning they're logged in
+                        string userToken = await context.GetAccessToken(AuthSettings.Scopes);
+                        if (string.IsNullOrEmpty(userToken))
+                        {
+                            // Take user to login thread
+                            await context.Forward(new AzureAuthDialog(AuthSettings.Scopes), ResumeAfterAuthAsync, message, CancellationToken.None);
+                        }
+                        else
+                        {
+                            // Can't login if already logged in
+                            // Post response and end this dialog
+                            await context.PostAsync("You are already logged in.");
+                            context.Wait(MessageReceivedAsync);
+                        }
+                        break;
+
+                    case "Log Out":
+                        // Make sure nothing is "cached"
+                        DataRetriever.DeleteAllData();
+
+                        // Logout and end this dialog
+                        await context.Logout();
                         context.Wait(MessageReceivedAsync);
+                        break;
 
-                        timeRange = DateTime.Now;
-                    }
+                    case "Who":
+                        // context is handled inside this method
+                        await TryGiveUsernameAsync(context, message.Text);
+                        break;
 
-                    // context is handled inside this method
-                    await TryQueryDatabaseAsync(context, message);
-                }
-                else if (string.Equals(message.Text, "refresh", StringComparison.OrdinalIgnoreCase))
-                {
-                    // Refresh cached data
-                    await RefreshAsync(context, true);
+                    case "Query":
+                        // Extract entities and store in context
+                        LuisEntity expenseEntity = luisResponse.Entities.FirstOrDefault((e) => e.Type == EXPENSE_ENTITY);
+                        LuisEntity timeEntity = luisResponse.Entities.FirstOrDefault((e) => e.Type == TIME_ENTITY);
+                        if (expenseEntity != null)
+                        {
+                            context.PrivateConversationData.SetValue<string>(EXPENSE_ENTITY, expenseEntity.Entity);
+                        }
+                        if (timeEntity != null)
+                        {
+                            context.PrivateConversationData.SetValue<string>(TIME_ENTITY, timeEntity.Entity);
+                        }
 
-                    // End this dialog
-                    context.Wait(MessageReceivedAsync);
-                }
-                else if (IsPreviousButton(message.Text))
-                {
-                    // In this scenario, the user has selected a button they are not currently in the dialog for
-                    await context.PostAsync(string.Format("Sorry, that question is outdated. Try querying again.", INSTRUCTIONS));
-                    context.Wait(MessageReceivedAsync);
-                }
-                else
-                {
-                    // TODO: put LUIS interpretation here
+                        timeRange = DateTime.Parse("June, 2016");
 
-                    // Tell user we don't know what to do here, and end this dialog
-                    await context.PostAsync(string.Format("Sorry, '{0}' is not a choice. {1}", message.Text, INSTRUCTIONS));
-                    context.Wait(MessageReceivedAsync);
+                        // context is handled inside this method
+                        await TryQueryDatabaseAsync(context, message);
+                        break;
+
+                    case "None":
+                        if(IsPreviousButton(message.Text))
+                        {
+                            // In this scenario, the user has selected a button they are not currently in the dialog for
+                            await context.PostAsync(string.Format("Sorry, that question is outdated. Try querying again.", INSTRUCTIONS));
+                            context.Wait(MessageReceivedAsync);
+                        }
+                        else
+                        {
+                            // Tell user we don't know what to do here, and end this dialog
+                            await context.PostAsync(string.Format("Sorry, '{0}' is not a choice. {1}", message.Text, INSTRUCTIONS));
+                            context.Wait(MessageReceivedAsync);
+                        }
+                        break;
                 }
             }
             catch (Exception e)
@@ -197,7 +205,9 @@ namespace Fineas.Dialogs
                     {
                         // If we have refreshed in the last x minutes, then go right to the questions
                         //await GetLineItemChoiceAsync(context);
-                        context.Call(QueryDialog.BuildDialog(null, null), RunQuery);
+
+                        //context.Call(QueryDialog.BuildDialog(null, null), RunQuery);
+                        CallQueryDialog(context);
                     }
                 }
                 else
@@ -211,6 +221,15 @@ namespace Fineas.Dialogs
                 await context.PostAsync("You shouldn't be in here.");
                 context.Wait(MessageReceivedAsync);
             }
+        }
+
+        private void CallQueryDialog(IDialogContext context)
+        {
+            string expenseCategory = null;
+            string timePeriod = null;
+            context.PrivateConversationData.TryGetValue<string>(EXPENSE_ENTITY, out expenseCategory);
+            context.PrivateConversationData.TryGetValue<string>(TIME_ENTITY, out timePeriod);
+            context.Call(QueryDialog.BuildDialog(expenseCategory, timePeriod), RunQuery);
         }
 
         private async Task<bool> EnsureHaveDataAsync(IDialogContext context)
@@ -281,7 +300,8 @@ namespace Fineas.Dialogs
             if (await EnsureHaveDataAsync(context))
                 // Start dialog to get user's filters for query
                 //await GetLineItemChoiceAsync(context);
-                context.Call(QueryDialog.BuildDialog(null, null), RunQuery);
+                //context.Call(QueryDialog.BuildDialog(null, null), RunQuery);
+                CallQueryDialog(context);
             else
                 context.Wait(MessageReceivedAsync);
         }
@@ -409,6 +429,10 @@ namespace Fineas.Dialogs
             currentItems = DataRetriever.QueryFromData(formState.TimePeriod, formState.ExpenseCategory, user.alias, timeRange);
 
             await PrintCards(context, formState.ExpenseCategory);
+
+            // Clear databag data
+            context.PrivateConversationData.RemoveValue(EXPENSE_ENTITY);
+            context.PrivateConversationData.RemoveValue(TIME_ENTITY);
         }
         
         private async Task PrintCards(IDialogContext context, string lineItem)
