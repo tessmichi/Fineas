@@ -31,6 +31,9 @@ namespace Fineas
             SqlDb.ConnectionTimeout = ConfigurationManager.AppSettings["Db.ConnectionTimeout"];
             SqlDb.ConnectionString = ConfigurationManager.AppSettings["Db.ConnectionString"];
 
+            LuisHelper.LuisModelId = ConfigurationManager.AppSettings["Luis.ModelId"];
+            LuisHelper.LuisApiKey = ConfigurationManager.AppSettings["Luis.ApiKey"];
+
             Models.User.CORP_DOMAIN = ConfigurationManager.AppSettings["CorpDomain"];
 
             FinanceItem.SetProperties();
