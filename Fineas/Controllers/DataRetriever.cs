@@ -58,9 +58,9 @@ namespace Fineas.Controllers
                     List<FinanceItem> filteredRows = new List<FinanceItem>();
 
                     filteredRows = (from dataRow in cachedResults[table]
-                           where dataRow.Line_Item.Trim() == item
-                           where dataRow.Actual_Year == date.Year.ToString()
-                           select dataRow).ToList();
+                                    where dataRow.Line_Item.Trim().Equals(item, StringComparison.OrdinalIgnoreCase)
+                                    where dataRow.Actual_Year.Equals(date.Year.ToString(), StringComparison.OrdinalIgnoreCase)
+                                    select dataRow).ToList();
 
                     if (time.Equals("MTD", StringComparison.OrdinalIgnoreCase))
                     {
