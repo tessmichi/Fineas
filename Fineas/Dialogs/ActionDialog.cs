@@ -400,10 +400,10 @@ namespace Fineas.Dialogs
         private async Task ResumeAfterTimeChoice(IDialogContext context, IAwaitable<string> result)
         {
             // Given timeframe choice, get data type choice
-            string timeframeChoice = await result;
+            string choice = await result;
 
             if (await EnsureHaveDataAsync(context))
-                await RunQuery(context, timeframeChoice);
+                await RunQuery(context, choice);
             else
                 context.Wait(MessageReceivedAsync);
         }
