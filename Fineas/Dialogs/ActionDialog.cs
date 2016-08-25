@@ -23,7 +23,6 @@ namespace Fineas.Dialogs
     [Serializable]
     public class ActionDialog : IDialog<string>
     {
-        private string dataItemChoice = string.Empty;
         private DateTime timeRange = DateTime.Now;
 
         private List<FinanceItem> currentItems = new List<FinanceItem>();
@@ -383,7 +382,7 @@ namespace Fineas.Dialogs
             }
 
             // Save the option the user selected
-            dataItemChoice = choice;
+            context.PrivateConversationData.SetValue<string>(EXPENSE_ENTITY, choice);
 
             // Now ask which timeframe choice they want
             await GetTimeFrameChoice(context);
@@ -401,22 +400,34 @@ namespace Fineas.Dialogs
         {
             // Given timeframe choice, get data type choice
             string choice = await result;
+            context.PrivateConversationData.SetValue<string>(TIME_ENTITY, choice);
 
             if (await EnsureHaveDataAsync(context))
-                await RunQuery(context, choice);
+                await RunQuery(context);
             else
                 context.Wait(MessageReceivedAsync);
         }
 
-        private async Task RunQuery(IDialogContext context, string timeframeChoice)
+        private async Task RunQuery(IDialogContext context)
         {
             // Verify current user
             User user = await GetUserAsync(context);
 
-            // Run lync on 'cached' data (stored in DataRetriever)
-            currentItems = DataRetriever.QueryFromData(timeframeChoice, dataItemChoice, user.alias, timeRange);
+            string expenseCategory = null;
+            string timePeriod = null;
 
-            await PrintCards(context, dataItemChoice);
+            if (context.PrivateConversationData.TryGetValue<string>(EXPENSE_ENTITY, out expenseCategory)
+                && context.PrivateConversationData.TryGetValue<string>(TIME_ENTITY, out timePeriod))
+            {
+                // Run lync on 'cached' data (stored in DataRetriever)
+                currentItems = DataRetriever.QueryFromData(timePeriod, expenseCategory, user.alias, timeRange);
+
+                await PrintCards(context, expenseCategory);
+            }
+            else
+            {
+
+            }
         }
 
         //private async Task RunQuery(IDialogContext context, IAwaitable<QueryForm> formAwaitable)
