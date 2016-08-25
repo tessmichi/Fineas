@@ -298,7 +298,7 @@ namespace Fineas.Dialogs
             if (await EnsureHaveDataAsync(context))
                 // Start dialog to get user's filters for query
                 await GetUnspecifiedResponsesAsync(context);
-            //CallQueryDialog(context);
+                //CallQueryDialog(context);
             else
                 context.Wait(MessageReceivedAsync);
         }
@@ -369,9 +369,17 @@ namespace Fineas.Dialogs
                 // Read response from user
                 PromptDialog.Text(context, SaveLineItemChoice, "Please choose one");
             }
+            else if (!context.PrivateConversationData.TryGetValue<string>(TIME_ENTITY, out timePeriod))
+            {
+                // Read response from user
+                PromptDialog.Choice(context, SaveTimeChoice, new List<string>(DataRetriever.TimeframeOptions), "What timeframe do you want?", "Let's try that again.", 2, PromptStyle.Auto);
+            }
             else
             {
-
+                if (await EnsureHaveDataAsync(context))
+                    await RunQuery(context);
+                else
+                    context.Wait(MessageReceivedAsync);
             }
         }
 
@@ -392,18 +400,13 @@ namespace Fineas.Dialogs
             context.PrivateConversationData.SetValue<string>(EXPENSE_ENTITY, choice);
 
             // Now ask which timeframe choice they want
-            await GetTimeFrameChoice(context);
-        }
-
-        private async Task GetTimeFrameChoice(IDialogContext context)
-        {
             if (await EnsureHaveDataAsync(context))
-                PromptDialog.Choice(context, ResumeAfterTimeChoice, new List<string>(DataRetriever.TimeframeOptions), "What timeframe do you want?", "Let's try that again.", 2, PromptStyle.Auto);
+                PromptDialog.Choice(context, SaveTimeChoice, new List<string>(DataRetriever.TimeframeOptions), "What timeframe do you want?", "Let's try that again.", 2, PromptStyle.Auto);
             else
                 context.Wait(MessageReceivedAsync);
         }
 
-        private async Task ResumeAfterTimeChoice(IDialogContext context, IAwaitable<string> result)
+        private async Task SaveTimeChoice(IDialogContext context, IAwaitable<string> result)
         {
             // Given timeframe choice, get data type choice
             string choice = await result;
