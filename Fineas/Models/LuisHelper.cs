@@ -18,6 +18,7 @@ namespace Fineas.Models
 
             using (var client = new HttpClient())
             {
+                // TODO: move to config file
                 string uri = $"https://api.projectoxford.ai/luis/v1/application?id={LuisModelId}&subscription-key={LuisApiKey}&q={inputEscaped}";
                 HttpResponseMessage response = await client.GetAsync(uri);
 

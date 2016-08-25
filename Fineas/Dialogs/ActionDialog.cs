@@ -18,8 +18,6 @@ namespace Fineas.Dialogs
     using System.Threading;
     using System.Threading.Tasks;
 
-    // TODO: store default responses somewhere that's called only once
-
     [Serializable]
     public class ActionDialog : IDialog<string>
     {
@@ -178,7 +176,7 @@ namespace Fineas.Dialogs
             // Make response saying who user is
             string res = string.IsNullOrEmpty(user.token) ?
                 "We don't know who you are, try logging in!" :
-                    string.IsNullOrEmpty(user.upn) ?
+                string.IsNullOrEmpty(user.upn) ?
                     "You're logged in as an account type I don't recognize. Try another one!" :
                     string.Format("You are logged in as {0}, {1}", user.upn.ToLower(), user.given_name);
 

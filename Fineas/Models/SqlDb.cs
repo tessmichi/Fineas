@@ -22,15 +22,65 @@ namespace Fineas.Models
         private static int _connectionTimeout;
         private static string _connectionString;
 
-        public static string Server { get; set; }
+        public static string Server
+        {
+            get
+            {
+                return _server;
+            }
+            set
+            {
+                _server = value;
+            }
+        }
 
-        public static string InitialCatalog { get; set; }
+        public static string InitialCatalog
+        {
+            get
+            {
+                return _initialCatalog;
+            }
+            set
+            {
+                _initialCatalog = value;
+            }
+        }
 
-        public static string PersistSecurityInfo { get; set; }
+        public static string PersistSecurityInfo
+        {
+            get
+            {
+                return _persistSecurityInfo.ToString();
+            }
+            set
+            {
+                _persistSecurityInfo = Convert.ToBoolean(value);
+            }
+        }
 
-        public static string UserId { get; set; }
+        public static string UserId
+        {
+            get
+            {
+                return _userId;
+            }
+            set
+            {
+                _userId = value;
+            }
+        }
 
-        public static string Password { get; set; }
+        public static string Password
+        {
+            get
+            {
+                return _password;
+            }
+            set
+            {
+                _password = value;
+            }
+        }
 
         public static string MultipleActiveResultSets
         {
@@ -80,7 +130,17 @@ namespace Fineas.Models
             }
         }
 
-        public static string ConnectionString { get; set; }
+        public static string ConnectionString
+        {
+            get
+            {
+                return _connectionString;
+            }
+            set
+            {
+                _connectionString = value;
+            }
+        }
 
         public static string GetConnectionString()
         {
