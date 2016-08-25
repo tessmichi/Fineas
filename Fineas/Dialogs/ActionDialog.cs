@@ -204,7 +204,7 @@ namespace Fineas.Dialogs
                     else
                     {
                         // If we have refreshed in the last x minutes, then go right to the questions
-                        await GetLineItemChoiceAsync(context);
+                        await GetUnspecifiedResponsesAsync(context);
 
                         //CallQueryDialog(context);
                     }
@@ -222,14 +222,14 @@ namespace Fineas.Dialogs
             }
         }
 
-        private void CallQueryDialog(IDialogContext context)
-        {
-            string expenseCategory = null;
-            string timePeriod = null;
-            context.PrivateConversationData.TryGetValue<string>(EXPENSE_ENTITY, out expenseCategory);
-            context.PrivateConversationData.TryGetValue<string>(TIME_ENTITY, out timePeriod);
-            context.Call(QueryDialog.BuildDialog(expenseCategory, timePeriod), RunQuery);
-        }
+        //private void CallQueryDialog(IDialogContext context)
+        //{
+        //    string expenseCategory = null;
+        //    string timePeriod = null;
+        //    context.PrivateConversationData.TryGetValue<string>(EXPENSE_ENTITY, out expenseCategory);
+        //    context.PrivateConversationData.TryGetValue<string>(TIME_ENTITY, out timePeriod);
+        //    context.Call(QueryDialog.BuildDialog(expenseCategory, timePeriod), RunQuery);
+        //}
 
         private async Task<bool> EnsureHaveDataAsync(IDialogContext context)
         {
@@ -298,14 +298,17 @@ namespace Fineas.Dialogs
             // Make sure data is filled
             if (await EnsureHaveDataAsync(context))
                 // Start dialog to get user's filters for query
-                await GetLineItemChoiceAsync(context);
+                await GetUnspecifiedResponsesAsync(context);
             //CallQueryDialog(context);
             else
                 context.Wait(MessageReceivedAsync);
         }
 
-        private async Task GetLineItemChoiceAsync(IDialogContext context)
+        private async Task GetUnspecifiedResponsesAsync(IDialogContext context)
         {
+            string expenseCategory = null;
+            string timePeriod = null;
+
             for (int i = 0; i < DataRetriever.LineItemDescriptions.Keys.Count; i += 4)
             {
                 List<string> keys = new List<string>(DataRetriever.LineItemDescriptions.Keys)
@@ -363,10 +366,10 @@ namespace Fineas.Dialogs
             }
 
             // Read response from user
-            PromptDialog.Text(context, GetLineItemChoice, "Please choose one");
+            PromptDialog.Text(context, SaveLineItemChoice, "Please choose one");
         }
 
-        private async Task GetLineItemChoice(IDialogContext context, IAwaitable<string> result)
+        private async Task SaveLineItemChoice(IDialogContext context, IAwaitable<string> result)
         {
             // Given timeframe choice, get data type choice
             string choice = await result;
@@ -416,27 +419,27 @@ namespace Fineas.Dialogs
             await PrintCards(context, dataItemChoice);
         }
 
-        private async Task RunQuery(IDialogContext context, IAwaitable<QueryForm> formAwaitable)
-        {
-            var formState = await formAwaitable;
+        //private async Task RunQuery(IDialogContext context, IAwaitable<QueryForm> formAwaitable)
+        //{
+        //    var formState = await formAwaitable;
 
-            // Verify current user
-            User user = await GetUserAsync(context);
+        //    // Verify current user
+        //    User user = await GetUserAsync(context);
 
-            if (await EnsureHaveDataAsync(context))
-            {
-                // Run lync on 'cached' data (stored in DataRetriever)
-                currentItems = DataRetriever.QueryFromData(formState.TimePeriod, formState.ExpenseCategory, user.alias, timeRange);
+        //    if (await EnsureHaveDataAsync(context))
+        //    {
+        //        // Run lync on 'cached' data (stored in DataRetriever)
+        //        currentItems = DataRetriever.QueryFromData(formState.TimePeriod, formState.ExpenseCategory, user.alias, timeRange);
 
-                await PrintCards(context, formState.ExpenseCategory);
+        //        await PrintCards(context, formState.ExpenseCategory);
 
-                // Clear databag data
-                context.PrivateConversationData.RemoveValue(EXPENSE_ENTITY);
-                context.PrivateConversationData.RemoveValue(TIME_ENTITY);
-            }
-            else
-                context.Wait(MessageReceivedAsync);
-        }
+        //        // Clear databag data
+        //        context.PrivateConversationData.RemoveValue(EXPENSE_ENTITY);
+        //        context.PrivateConversationData.RemoveValue(TIME_ENTITY);
+        //    }
+        //    else
+        //        context.Wait(MessageReceivedAsync);
+        //}
 
         private async Task PrintCards(IDialogContext context, string lineItem)
         {
