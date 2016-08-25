@@ -27,7 +27,7 @@ namespace Fineas.Dialogs
         private DateTime timeRange = DateTime.Now;
 
         private List<FinanceItem> currentItems = new List<FinanceItem>();
-        
+
         public const string INSTRUCTIONS = "Try one of my commands: help, logout, login, who, query, refresh. Or try something else!";
         private const int MAX_CARDS_CAROUSEL = 4;
 
@@ -53,7 +53,7 @@ namespace Fineas.Dialogs
                 var luisResponse = await LuisHelper.ParseUserInput(message.Text);
                 var bestIntent = luisResponse.Intents.Aggregate((currMax, x) => (currMax == null || x.Score > currMax.Score ? x : currMax));
 
-                switch(bestIntent.Intent)
+                switch (bestIntent.Intent)
                 {
                     case "Refresh":
                         // Refresh cached data
@@ -121,7 +121,7 @@ namespace Fineas.Dialogs
                         break;
 
                     case "None":
-                        if(IsPreviousButton(message.Text))
+                        if (IsPreviousButton(message.Text))
                         {
                             // In this scenario, the user has selected a button they are not currently in the dialog for
                             await context.PostAsync(string.Format("Sorry, that question is outdated. Try querying again.", INSTRUCTIONS));
@@ -143,7 +143,7 @@ namespace Fineas.Dialogs
                 context.Wait(MessageReceivedAsync);
             }
         }
-        
+
         private bool IsPreviousButton(string text)
         {
             // This should check the response as existing in every possible list of responses.
@@ -175,19 +175,19 @@ namespace Fineas.Dialogs
         {
             // Get current user
             User user = await GetUserAsync(context, message);
-            
+
             // Make response saying who user is
             string res = string.IsNullOrEmpty(user.token) ?
                 "We don't know who you are, try logging in!" :
                     string.IsNullOrEmpty(user.upn) ?
                     "You're logged in as an account type I don't recognize. Try another one!" :
                     string.Format("You are logged in as {0}, {1}", user.upn.ToLower(), user.given_name);
-            
+
             // Post response and end this dialog
             await context.PostAsync(res);
             context.Wait(MessageReceivedAsync);
         }
-        
+
         private async Task TryQueryDatabaseAsync(IDialogContext context, IMessageActivity message)
         {
             // Check if the user is from @microsoft.com or else kick their butt
@@ -262,7 +262,7 @@ namespace Fineas.Dialogs
             await context.PostAsync("If you want me to log you off, just say \"logout\".");
             context.Wait(MessageReceivedAsync);
         }
-        
+
         private async Task<User> GetUserAsync(IDialogContext context, string message = "", bool login = false)
         {
             // TODO: check context and see if the token matches the one from the message
@@ -299,17 +299,17 @@ namespace Fineas.Dialogs
             if (await EnsureHaveDataAsync(context))
                 // Start dialog to get user's filters for query
                 await GetLineItemChoiceAsync(context);
-                //CallQueryDialog(context);
+            //CallQueryDialog(context);
             else
                 context.Wait(MessageReceivedAsync);
         }
 
         private async Task GetLineItemChoiceAsync(IDialogContext context)
         {
-            for (int i = 0; i < DataRetriever.LineItemDescriptions.Keys.Count; i+=4)
+            for (int i = 0; i < DataRetriever.LineItemDescriptions.Keys.Count; i += 4)
             {
                 List<string> keys = new List<string>(DataRetriever.LineItemDescriptions.Keys)
-                    .GetRange(i, Math.Min(MAX_CARDS_CAROUSEL, DataRetriever.LineItemDescriptions.Keys.Count-i));
+                    .GetRange(i, Math.Min(MAX_CARDS_CAROUSEL, DataRetriever.LineItemDescriptions.Keys.Count - i));
 
                 // Make a new message since we cannot access the original message sent from the user
                 Activity message = (Activity)context.MakeMessage();
@@ -361,7 +361,7 @@ namespace Fineas.Dialogs
                     var reply = await client.Conversations.SendToConversationAsync(replyToConversation);
                 }
             }
-            
+
             // Read response from user
             PromptDialog.Text(context, GetLineItemChoice, "Please choose one");
         }
@@ -437,7 +437,7 @@ namespace Fineas.Dialogs
             else
                 context.Wait(MessageReceivedAsync);
         }
-        
+
         private async Task PrintCards(IDialogContext context, string lineItem)
         {
             Activity message = (Activity)context.MakeMessage();
@@ -455,10 +455,10 @@ namespace Fineas.Dialogs
                 replyToConversation.Type = "message";
                 replyToConversation.AttachmentLayout = AttachmentLayoutTypes.Carousel;
                 replyToConversation.Attachments = new List<Attachment>();
-                
+
                 foreach (FinanceItem item in currentItems)
                 {
-                    foreach (KeyValuePair<string,string> summary in item.GetSummaries())
+                    foreach (KeyValuePair<string, string> summary in item.GetSummaries())
                     {
                         List<CardImage> cardImages = new List<CardImage>();
                         List<CardAction> cardButtons = new List<CardAction>();
