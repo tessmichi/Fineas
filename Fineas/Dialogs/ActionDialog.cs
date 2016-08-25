@@ -308,64 +308,71 @@ namespace Fineas.Dialogs
             string expenseCategory = null;
             string timePeriod = null;
 
-            for (int i = 0; i < DataRetriever.LineItemDescriptions.Keys.Count; i += 4)
+            if (!context.PrivateConversationData.TryGetValue<string>(EXPENSE_ENTITY, out expenseCategory))
             {
-                List<string> keys = new List<string>(DataRetriever.LineItemDescriptions.Keys)
-                    .GetRange(i, Math.Min(MAX_CARDS_CAROUSEL, DataRetriever.LineItemDescriptions.Keys.Count - i));
-
-                // Make a new message since we cannot access the original message sent from the user
-                Activity message = (Activity)context.MakeMessage();
-
-                // Design this message as a reply to the user
-                Activity replyToConversation = message.CreateReply(
-                    i == 0 ?
-                    "Which expense category do you want to use?" :
-                    "I found some more options you can choose from!");
-                replyToConversation.Recipient = message.From;
-                replyToConversation.Type = "message";
-
-                // This will have a list of information which we want to display as a carousel of hero cards
-                replyToConversation.AttachmentLayout = AttachmentLayoutTypes.Carousel;
-                replyToConversation.Attachments = new List<Attachment>();
-
-                // For each line item and each line item description, print a hero card
-                foreach (string key in keys)
+                for (int i = 0; i < DataRetriever.LineItemDescriptions.Keys.Count; i += 4)
                 {
-                    //await context.PostAsync($"Doing key = {key}");
-                    List<CardImage> cardImages = new List<CardImage>();
-                    List<CardAction> cardButtons = new List<CardAction>();
+                    List<string> keys = new List<string>(DataRetriever.LineItemDescriptions.Keys)
+                        .GetRange(i, Math.Min(MAX_CARDS_CAROUSEL, DataRetriever.LineItemDescriptions.Keys.Count - i));
 
-                    // Add the button
-                    CardAction button = new CardAction()
+                    // Make a new message since we cannot access the original message sent from the user
+                    Activity message = (Activity)context.MakeMessage();
+
+                    // Design this message as a reply to the user
+                    Activity replyToConversation = message.CreateReply(
+                        i == 0 ?
+                        "Which expense category do you want to use?" :
+                        "I found some more options you can choose from!");
+                    replyToConversation.Recipient = message.From;
+                    replyToConversation.Type = "message";
+
+                    // This will have a list of information which we want to display as a carousel of hero cards
+                    replyToConversation.AttachmentLayout = AttachmentLayoutTypes.Carousel;
+                    replyToConversation.Attachments = new List<Attachment>();
+
+                    // For each line item and each line item description, print a hero card
+                    foreach (string key in keys)
                     {
-                        Type = "imBack",
-                        Title = "Choose",
-                        Value = key
-                    };
-                    cardButtons.Add(button);
+                        //await context.PostAsync($"Doing key = {key}");
+                        List<CardImage> cardImages = new List<CardImage>();
+                        List<CardAction> cardButtons = new List<CardAction>();
 
-                    HeroCard plCard = new HeroCard()
+                        // Add the button
+                        CardAction button = new CardAction()
+                        {
+                            Type = "imBack",
+                            Title = "Choose",
+                            Value = key
+                        };
+                        cardButtons.Add(button);
+
+                        HeroCard plCard = new HeroCard()
+                        {
+                            Title = key,
+                            Subtitle = DataRetriever.LineItemDescriptions[key],
+                            Images = cardImages,
+                            Buttons = cardButtons
+                        };
+                        Attachment plAttachment = plCard.ToAttachment();
+                        replyToConversation.Attachments.Add(plAttachment);
+                    }
+                    replyToConversation.AttachmentLayout = AttachmentLayoutTypes.Carousel;
+
+                    // Post options to user so they can select one
+                    using (var scope = DialogModule.BeginLifetimeScope(Conversation.Container, message))
                     {
-                        Title = key,
-                        Subtitle = DataRetriever.LineItemDescriptions[key],
-                        Images = cardImages,
-                        Buttons = cardButtons
-                    };
-                    Attachment plAttachment = plCard.ToAttachment();
-                    replyToConversation.Attachments.Add(plAttachment);
+                        var client = scope.Resolve<IConnectorClient>();
+                        var reply = await client.Conversations.SendToConversationAsync(replyToConversation);
+                    }
                 }
-                replyToConversation.AttachmentLayout = AttachmentLayoutTypes.Carousel;
 
-                // Post options to user so they can select one
-                using (var scope = DialogModule.BeginLifetimeScope(Conversation.Container, message))
-                {
-                    var client = scope.Resolve<IConnectorClient>();
-                    var reply = await client.Conversations.SendToConversationAsync(replyToConversation);
-                }
+                // Read response from user
+                PromptDialog.Text(context, SaveLineItemChoice, "Please choose one");
             }
+            else
+            {
 
-            // Read response from user
-            PromptDialog.Text(context, SaveLineItemChoice, "Please choose one");
+            }
         }
 
         private async Task SaveLineItemChoice(IDialogContext context, IAwaitable<string> result)
@@ -428,6 +435,9 @@ namespace Fineas.Dialogs
             {
 
             }
+
+            context.PrivateConversationData.RemoveValue(EXPENSE_ENTITY);
+            context.PrivateConversationData.RemoveValue(TIME_ENTITY);
         }
 
         //private async Task RunQuery(IDialogContext context, IAwaitable<QueryForm> formAwaitable)
