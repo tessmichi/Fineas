@@ -11,26 +11,26 @@ namespace Fineas.Models
         // private variables help obscure private static information which is stored in the proper format.
         // public variables represent everything as a string so the code using these objects is simpler.
 
-        private static string _server;
-        private static string _initialCatalog;
-        private static bool _persistSecurityInfo;
-        private static string _userId;
-        private static string _password;
-        private static bool _multipleActiveResultSets;
-        private static bool _encrypt;
-        private static bool _trustCertificate;
-        private static int _connectionTimeout;
-        private static string _connectionString;
+        private static string _server = string.Empty;
+        private static string _initialCatalog = string.Empty;
+        private static bool _persistSecurityInfo = false;
+        private static string _userId = string.Empty;
+        private static string _password = string.Empty;
+        private static bool _multipleActiveResultSets = false;
+        private static bool _encrypt = true;
+        private static bool _trustCertificate = false;
+        private static int _connectionTimeout = 30;
+        private static string _connectionString = string.Empty;
 
         public static string Server
         {
             get
             {
-                return _server;
+                return _server == null ? "" : _server;
             }
             set
             {
-                _server = value;
+                _server = value == null ? "" : value;
             }
         }
 
@@ -38,11 +38,11 @@ namespace Fineas.Models
         {
             get
             {
-                return _initialCatalog;
+                return _initialCatalog == null ? "" : _initialCatalog;
             }
             set
             {
-                _initialCatalog = value;
+                _initialCatalog = value == null ? "" : value;
             }
         }
 
@@ -50,11 +50,11 @@ namespace Fineas.Models
         {
             get
             {
-                return _persistSecurityInfo.ToString();
+                return _persistSecurityInfo.ToString() == null ? "" : _persistSecurityInfo.ToString();
             }
             set
             {
-                _persistSecurityInfo = Convert.ToBoolean(value);
+                _persistSecurityInfo = value == null ? false : Convert.ToBoolean(value);
             }
         }
 
@@ -62,11 +62,11 @@ namespace Fineas.Models
         {
             get
             {
-                return _userId;
+                return _userId == null ? "" : _userId;
             }
             set
             {
-                _userId = value;
+                _userId = value == null ? "" : value;
             }
         }
 
@@ -74,11 +74,11 @@ namespace Fineas.Models
         {
             get
             {
-                return _password;
+                return _password == null ? "" : _password;
             }
             set
             {
-                _password = value;
+                _password = value == null ? "" : value;
             }
         }
 
@@ -86,11 +86,11 @@ namespace Fineas.Models
         {
             get
             {
-                return Convert.ToString(_multipleActiveResultSets);
+                return Convert.ToString(_multipleActiveResultSets) == null ? "" : Convert.ToString(_multipleActiveResultSets);
             }
             set
             {
-                _multipleActiveResultSets = Convert.ToBoolean(value);
+                _multipleActiveResultSets = value == null ? false : Convert.ToBoolean(value);
             }
         }
 
@@ -98,11 +98,11 @@ namespace Fineas.Models
         {
             get
             {
-                return Convert.ToString(_encrypt);
+                return Convert.ToString(_encrypt) == null ? "" : Convert.ToString(_encrypt);
             }
             set
             {
-                _encrypt = Convert.ToBoolean(value);
+                _encrypt = value == null ? true : Convert.ToBoolean(value);
             }
         }
 
@@ -110,11 +110,11 @@ namespace Fineas.Models
         {
             get
             {
-                return Convert.ToString(_trustCertificate);
+                return Convert.ToString(_trustCertificate) == null ? "" : Convert.ToString(_trustCertificate);
             }
             set
             {
-                _trustCertificate = Convert.ToBoolean(value);
+                _trustCertificate = value == null ? false : Convert.ToBoolean(value);
             }
         }
 
@@ -122,11 +122,11 @@ namespace Fineas.Models
         {
             get
             {
-                return Convert.ToString(_connectionTimeout);
+                return Convert.ToString(_connectionTimeout) == null ? "" : Convert.ToString(_connectionTimeout);
             }
             set
             {
-                _connectionTimeout = Convert.ToInt32(value);
+                _connectionTimeout = value == null ? 30 : Convert.ToInt32(value);
             }
         }
 
@@ -134,11 +134,11 @@ namespace Fineas.Models
         {
             get
             {
-                return _connectionString;
+                return _connectionString == null ? "" : _connectionString;
             }
             set
             {
-                _connectionString = value;
+                _connectionString = value == null ? "" : value;
             }
         }
 

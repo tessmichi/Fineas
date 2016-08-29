@@ -43,6 +43,10 @@ namespace Fineas.Controllers
 
         public static List<FinanceItem> QueryFromData(string time, string item, string alias, DateTime date)
         {
+            time = time == null ? "" : time.Length > 0 ? time: "";
+            item = item == null ? "" : item.Length > 0 ? item : "";
+            alias = alias == null ? "" : alias.Length > 0 ? alias : "";
+
             // Only query from either month or quarter but not both or neither
             List<string> tableOptions = (from tbl in tables
                                          where tbl.ToUpper().Contains((time.ToUpper() == "MTD") ? "MONTH" : "QTR")
@@ -142,52 +146,62 @@ namespace Fineas.Controllers
 
             using (SqlConnection connection = new SqlConnection(SqlDb.GetConnectionString()))
             {
-                using (SqlCommand cmd = new SqlCommand(qryLineItems, connection))
+                if (connection.ConnectionString.Length > 0)
                 {
-                    connection.Open();
-                    SqlDataReader reader = cmd.ExecuteReader();
-
-                    try
+                    using (SqlCommand cmd = new SqlCommand(qryLineItems, connection))
                     {
-                        while (reader.Read())
+                        connection.Open();
+                        SqlDataReader reader = cmd.ExecuteReader();
+
+                        try
                         {
-                            try
+                            while (reader.Read())
                             {
-                                // TODO: maybe this should be an object
-                                int indexLineItem = reader.GetOrdinal("LINE ITEM");
-                                int indexLineItemDescription = reader.GetOrdinal("definition");
-                                string lineItem = string.Empty, lineItemDesc = string.Empty;
-
-                                if (indexLineItem >= 0 && indexLineItem < reader.FieldCount)
+                                try
                                 {
-                                    var temp = reader.GetValue(indexLineItem);
-                                    if (temp != null)
+                                    // TODO: maybe this should be an object
+                                    int indexLineItem = reader.GetOrdinal("LINE ITEM");
+                                    int indexLineItemDescription = reader.GetOrdinal("definition");
+                                    string lineItem = string.Empty, lineItemDesc = string.Empty;
+
+                                    if (indexLineItem >= 0 && indexLineItem < reader.FieldCount)
                                     {
-                                        lineItem = temp.ToString().Trim();
+                                        var temp = reader.GetValue(indexLineItem);
+                                        if (temp != null)
+                                        {
+                                            lineItem = temp.ToString().Trim();
+                                        }
+                                    }
+                                    else continue;
+                                    if (indexLineItemDescription >= 0 && indexLineItemDescription < reader.FieldCount)
+                                    {
+                                        var temp = reader.GetValue(indexLineItemDescription);
+                                        if (temp != null)
+                                        {
+                                            lineItemDesc = temp.ToString().Trim();
+                                        }
+                                    }
+                                    else continue;
+
+                                    if (!LineItemDescriptions.ContainsKey(lineItem))
+                                    {
+                                        LineItemDescriptions.Add(lineItem, lineItemDesc);
+                                    }
+                                    else
+                                    {
+
                                     }
                                 }
-                                else continue;
-                                if (indexLineItemDescription >= 0 && indexLineItemDescription < reader.FieldCount)
+                                catch (IndexOutOfRangeException e)
                                 {
-                                    var temp = reader.GetValue(indexLineItemDescription);
-                                    if (temp != null)
-                                    {
-                                        lineItemDesc = temp.ToString().Trim();
-                                    }
                                 }
-                                else continue;
-
-                                LineItemDescriptions.Add(lineItem, lineItemDesc);
-                            }
-                            catch (IndexOutOfRangeException e)
-                            {
                             }
                         }
-                    }
-                    finally
-                    {
-                        // Always call Close when done reading.
-                        reader.Close();
+                        finally
+                        {
+                            // Always call Close when done reading.
+                            reader.Close();
+                        }
                     }
                 }
             }
@@ -195,60 +209,73 @@ namespace Fineas.Controllers
 
         private static void GetDataForTable(string table, string alias)
         {
+            table = table == null ? "" : table;
+            alias = alias == null ? "" : table;
+            if (cachedResults.ContainsKey(table))
+                return;
+
             DataTable sqlTable = new DataTable();
             cachedResults.Add(table, new List<FinanceItem>());
             List<string> colsToIgnore = new List<string>();
 
             using (SqlConnection connection = new SqlConnection(SqlDb.GetConnectionString()))
             {
-                string qry = qryGeneral;
-                using (SqlCommand cmd = new SqlCommand(string.Format(qry, table, alias.ToUpper()), connection))
+                if (connection.ConnectionString.Length > 0)
                 {
-                    connection.Open();
-                    SqlDataReader reader = cmd.ExecuteReader();
-
-                    try
+                    string qry = qryGeneral;
+                    using (SqlCommand cmd = new SqlCommand(string.Format(qry, table, alias.ToUpper()), connection))
                     {
-                        while (reader.Read())
+                        connection.Open();
+                        SqlDataReader reader = cmd.ExecuteReader();
+
+                        try
                         {
-                            FinanceItem item = new FinanceItem();
-
-                            // Iterate names of fields in object and set field based on matching column
-                            foreach (FieldInfo col in FinanceItem.Properties)
+                            while (reader.Read())
                             {
-                                if (!colsToIgnore.Contains(col.Name)) // This should increase speed a bit.
-                                {
-                                    try
-                                    {
-                                        string colNameConverted = col.Name.Replace("_", " ");
-                                        int index = reader.GetOrdinal(colNameConverted);
+                                FinanceItem item = new FinanceItem();
 
-                                        if (index >= 0 && index < reader.FieldCount)
+                                // Iterate names of fields in object and set field based on matching column
+                                foreach (FieldInfo col in FinanceItem.Properties)
+                                {
+                                    if (!colsToIgnore.Contains(col.Name)) // This should increase speed a bit.
+                                    {
+                                        try
                                         {
-                                            var temp = reader.GetValue(index);
-                                            if (temp != null)
+                                            string colNameConverted = col.Name.Replace("_", " ");
+                                            int index = reader.GetOrdinal(colNameConverted);
+
+                                            if (index >= 0 && index < reader.FieldCount)
                                             {
-                                                string value = temp.ToString().Trim();
-                                                col.SetValue(item, value);
+                                                var temp = reader.GetValue(index);
+                                                if (temp != null)
+                                                {
+                                                    string value = temp.ToString().Trim();
+                                                    col.SetValue(item, value);
+                                                }
                                             }
                                         }
-                                    }
-                                    catch (IndexOutOfRangeException e)
-                                    {
-                                        colsToIgnore.Add(col.Name);
-                                        Console.WriteLine(string.Format("Looks like one of our columns wasn't found: {0}", col));
+                                        catch (IndexOutOfRangeException e)
+                                        {
+                                            colsToIgnore.Add(col.Name);
+                                            Console.WriteLine(string.Format("Looks like one of our columns wasn't found: {0}", col));
+                                        }
                                     }
                                 }
-                            }
 
-                            cachedResults[table].Add(item);
+                                cachedResults[table].Add(item);
+                            }
+                        }
+                        finally
+                        {
+                            // Always call Close when done reading.
+                            reader.Close();
+                            connection.Close();
                         }
                     }
-                    finally
-                    {
-                        // Always call Close when done reading.
-                        reader.Close();
-                    }
+                }
+                else
+                {
+
                 }
             }
         }
