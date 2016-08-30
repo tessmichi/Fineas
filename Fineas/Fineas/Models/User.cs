@@ -9,14 +9,15 @@ namespace Fineas.Models
     [Serializable]
     public class User
     {
-        public string token = string.Empty;
-        public string given_name = string.Empty;
-        public string family_name = string.Empty;
-        public bool in_corp = false;
-        public string ipaddr = string.Empty;
-        public string platf = string.Empty;
-        public string upn = string.Empty;
-        public string alias = string.Empty;
+        // TODO: this shouldn't all be exposed or publically available for setting
+        public string Token = string.Empty;
+        public string GivenName = string.Empty;
+        public string FamilyName = string.Empty;
+        public bool InCorp = false;
+        public string IpAddress = string.Empty;
+        public string Platform = string.Empty;
+        public string Upn = string.Empty;
+        public string Alias = string.Empty;
 
         public static User Unknown = new User();
         public static string CORP_DOMAIN = "";
@@ -30,10 +31,10 @@ namespace Fineas.Models
         {
             DecodeJWTToken(token);
         }
-        
+
         private void DecodeJWTToken(string tkn)
         {
-            token = tkn;
+            Token = tkn;
 
             if (string.IsNullOrEmpty(tkn))
             {
@@ -59,17 +60,18 @@ namespace Fineas.Models
 
                     var utf8Token = Encoding.UTF8.GetString(decodedToken);
                     JObject result = JObject.Parse(utf8Token);
-                    
-                    given_name = result.GetValue("given_name").ToString();
-                    family_name = result.GetValue("family_name").ToString();
-                    in_corp = Convert.ToBoolean(result.GetValue("in_corp"));
-                    ipaddr = result.GetValue("ipaddr").ToString();
-                    platf = result.GetValue("platf").ToString();
-                    upn = result.GetValue("upn").ToString();
-                    alias = upn.Substring(0, upn.IndexOf('@')).ToUpper();
+
+                    GivenName = result.GetValue("given_name").ToString();
+                    FamilyName = result.GetValue("family_name").ToString();
+                    InCorp = Convert.ToBoolean(result.GetValue("in_corp"));
+                    IpAddress = result.GetValue("ipaddr").ToString();
+                    Platform = result.GetValue("platf").ToString();
+                    Upn = result.GetValue("upn").ToString();
+                    Alias = Upn.Substring(0, Upn.IndexOf('@')).ToUpper();
                 }
                 catch (FormatException e)
                 {
+                    Console.WriteLine(e.Message);
                     Clear();
                 }
             }
@@ -77,10 +79,10 @@ namespace Fineas.Models
 
         public bool VerifyUser()
         {
-            // TODO: could be in microsoft but not on our domain
+            // TODO: should support multiple domains at a time
             string checkEmail = CORP_DOMAIN;
-            int index = upn.Length - checkEmail.Length >= 0 ? upn.Length - checkEmail.Length : 0;
-            string userEmail = upn.Substring(index);
+            int index = Upn.Length - checkEmail.Length >= 0 ? Upn.Length - checkEmail.Length : 0;
+            string userEmail = Upn.Substring(index);
             return string.Equals(userEmail, checkEmail, StringComparison.OrdinalIgnoreCase);
             // Use this instead of EndsWith because need to ignore case
         }
@@ -89,28 +91,28 @@ namespace Fineas.Models
         {
             // TODO: use reflection
 
-            token = string.Empty;
-            given_name = string.Empty;
-            family_name = string.Empty;
-            in_corp = false;
-            ipaddr = string.Empty;
-            platf = string.Empty;
-            upn = string.Empty;
-            alias = string.Empty;
+            Token = string.Empty;
+            GivenName = string.Empty;
+            FamilyName = string.Empty;
+            InCorp = false;
+            IpAddress = string.Empty;
+            Platform = string.Empty;
+            Upn = string.Empty;
+            Alias = string.Empty;
         }
-        
+
         public bool Equals(User other)
         {
             // TODO: use reflection
 
-            return ( token == other.token &&
-                given_name == other.given_name &&
-                family_name == other.family_name &&
-                in_corp == other.in_corp &&
-                ipaddr == other.ipaddr &&
-                platf == other.platf &&
-                upn == other.upn &&
-                alias == other.alias);
+            return (Token == other.Token &&
+                GivenName == other.GivenName &&
+                FamilyName == other.FamilyName &&
+                InCorp == other.InCorp &&
+                IpAddress == other.IpAddress &&
+                Platform == other.Platform &&
+                Upn == other.Upn &&
+                Alias == other.Alias);
         }
     }
 }

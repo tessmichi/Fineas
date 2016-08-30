@@ -32,7 +32,9 @@ namespace Fineas.Dialogs
         private const string TIME_ENTITY = "TimePeriod";
 
 
+#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
         public async Task StartAsync(IDialogContext context)
+#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
         {
             context.Wait(MessageReceivedAsync);
         }
@@ -47,8 +49,8 @@ namespace Fineas.Dialogs
                     message.Text.Remove(message.Text.IndexOf(tag), tag.Length).Trim() :
                     message.Text.Trim();
 
-                var luisResponse = await LuisHelper.ParseUserInput(message.Text);
-                var bestIntent = luisResponse.Intents.Aggregate((currMax, x) => (currMax == null || x.Score > currMax.Score ? x : currMax));
+                LuisResponse luisResponse = await LuisHelper.ParseUserInput(message.Text);
+                LuisIntent bestIntent = luisResponse.GetBestIntent();
 
                 switch (bestIntent.Intent)
                 {
@@ -159,7 +161,7 @@ namespace Fineas.Dialogs
 
             // Check current user and refresh data based off their credentials
             User user = await GetUserAsync(context);
-            DataRetriever.GetAllData(user.alias);
+            DataRetriever.GetAllData(user.Alias);
 
             // Post response
             if (alertWhenDone)
@@ -174,11 +176,11 @@ namespace Fineas.Dialogs
             User user = await GetUserAsync(context, message);
 
             // Make response saying who user is
-            string res = string.IsNullOrEmpty(user.token) ?
+            string res = string.IsNullOrEmpty(user.Token) ?
                 "We don't know who you are, try logging in!" :
-                string.IsNullOrEmpty(user.upn) ?
+                string.IsNullOrEmpty(user.Upn) ?
                     "You're logged in as an account type I don't recognize. Try another one!" :
-                    string.Format("You are logged in as {0}, {1}", user.upn.ToLower(), user.given_name);
+                    string.Format("You are logged in as {0}, {1}", user.Upn.ToLower(), user.GivenName);
 
             // Post response and end this dialog
             await context.PostAsync(res);
@@ -251,7 +253,7 @@ namespace Fineas.Dialogs
 
             // Get current user and refresh data based on their credentials
             User user = await GetUserAsync(context, message);
-            DataRetriever.GetAllData(user.alias);
+            DataRetriever.GetAllData(user.Alias);
 
             // Tell user they are authenticated
             // Post response and end this dialog
@@ -296,7 +298,7 @@ namespace Fineas.Dialogs
             if (await EnsureHaveDataAsync(context))
                 // Start dialog to get user's filters for query
                 await GetUnspecifiedResponsesAsync(context);
-                //CallQueryDialog(context);
+            //CallQueryDialog(context);
             else
                 context.Wait(MessageReceivedAsync);
         }
@@ -428,7 +430,7 @@ namespace Fineas.Dialogs
                 && context.PrivateConversationData.TryGetValue<string>(TIME_ENTITY, out timePeriod))
             {
                 // Run lync on 'cached' data (stored in DataRetriever)
-                currentItems = DataRetriever.QueryFromData(timePeriod, expenseCategory, user.alias, timeRange);
+                currentItems = DataRetriever.QueryFromData(timePeriod, expenseCategory, user.Alias, timeRange);
 
                 await PrintCards(context, expenseCategory);
             }

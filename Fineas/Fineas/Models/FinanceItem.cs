@@ -14,13 +14,22 @@ namespace Fineas.Models
         // TODO: make sure the website showing this api is safe
         // TODO: web.config to hide website from any user that isnt the bot
         // web exploit check tools online against my url
-        
+
+        // ***************************************************
+        // ***************************************************
+        // *  DO NOT CHANGE NAMES OF ANY OF THESE PROPERTIES *
+        // *  AS THEY MATCH EXACTLY WITH THE DATABASE        *
+        // ***************************************************
+        // ***************************************************
+
         private static List<FieldInfo> _properties = new List<FieldInfo>();
         private static string SHORT_STRING = "{0}'s {1} Report for {2}";
-        private static string LONG_STRING = "For line item {0}, {1} {2} for {3}.";
+        private static string LONG_STRING = "For line item {0}, {1} {2}{3}.";
 
         public static FinanceItem Unknown = new FinanceItem();
-        
+
+        // TODO: these should not have public sets. Should take in data row into a constructor
+
         public string Team = string.Empty;
         public string Fiscal_Month = string.Empty;
         public string Fiscal_Quarter = string.Empty;
@@ -36,21 +45,32 @@ namespace Fineas.Models
         {
             get
             {
-                string yearRaw = string.Format("January, 20{0}", Fiscal_Year.Substring(2));
-                var year = DateTime.Parse(yearRaw).AddYears(1).Year.ToString();
+                try
+                {
+                    DateTime yearCurrent = Convert.ToDateTime(string.Format("January, 20{0}", Fiscal_Year.Substring(2)));
+                    DateTime yearNext = yearCurrent.AddYears(1);
 
-                if (!string.IsNullOrEmpty(Fiscal_Month.Trim()))
-                {
-                    var month = DateTime.Parse(Fiscal_Month);
-                    return month.Month > 6 ?
-                        year :
-                        string.Format("20{0}", Fiscal_Year.Substring(2));
+                    if (!string.IsNullOrEmpty(Fiscal_Month.Trim()))
+                    {
+                        DateTime month = DateTime.Parse(Fiscal_Month);
+                        return month.Month > 6 ?
+                            yearNext.Year.ToString() :
+                            yearCurrent.Year.ToString();
+                    }
+                    else
+                    {
+                        int quarter = Convert.ToInt32(Fiscal_Quarter.Substring(Fiscal_Quarter.Length - 1));
+                        return quarter <= 2 && quarter >= 1 ?
+                            yearNext.Year.ToString() :
+                            quarter <= 4 && quarter >= 3 ?
+                                yearCurrent.Year.ToString() :
+                                string.Empty;
+                    }
                 }
-                else
+                catch (FormatException e)
                 {
-                    return Convert.ToInt32(Fiscal_Quarter.Substring(Fiscal_Quarter.Length-1)) <= 2 ?
-                        year :
-                        string.Format("20{0}", Fiscal_Year.Substring(2));
+                    Console.WriteLine(e.Message);
+                    return string.Empty;
                 }
             }
         }
@@ -68,21 +88,26 @@ namespace Fineas.Models
 
         }
 
+        // Returns a dictionary of summaries.
+        // Has one entry per summary type: Forecast, Actual, Variance
+        // Each entry contains the words used to describe that entry along with its value
         // <short, long>
-        public Dictionary<string,string> GetSummaries()
+        public Dictionary<string, string> GetSummaries()
         {
             Dictionary<string, string> summaries = new Dictionary<string, string>();
 
-            string time = (Fiscal_Month != string.Empty ? Fiscal_Month : Fiscal_Quarter);
+            string time = Fiscal_Month != string.Empty || Fiscal_Quarter != string.Empty ?
+                string.Format(" for {0}", (Fiscal_Month != string.Empty ? Fiscal_Month : Fiscal_Quarter)) :
+                string.Empty;
 
             // Forecast
             summaries.Add(
                 string.Format(SHORT_STRING,
-                    Team, 
+                    Team,
                     "Forecast",
                     Line_Item),
                 Forecast == string.Empty ?
-                    $"Could not parse database entry for {time}" :
+                    $"Could not parse database entry{time}." :
                     string.Format(LONG_STRING,
                         Line_Item,
                         Team,
@@ -96,7 +121,7 @@ namespace Fineas.Models
                     "Actual",
                     Line_Item),
                 Actual == string.Empty ?
-                    $"Could not parse database entry for {time}" :
+                    $"Could not parse database entry{time}." :
                     string.Format(LONG_STRING,
                         Line_Item,
                         Team,
@@ -110,7 +135,7 @@ namespace Fineas.Models
                     "Variance to Forecast",
                     Line_Item),
                 VTF == string.Empty ?
-                    $"Could not parse database entry for {time}" :
+                    $"Could not parse database entry {time}." :
                     string.Format(LONG_STRING,
                         Line_Item,
                         Team,
@@ -118,22 +143,6 @@ namespace Fineas.Models
                         time));
 
             return summaries;
-        }
-
-        public override string ToString()
-        {
-            StringBuilder build = new StringBuilder();
-
-            FieldInfo[] props = typeof(FinanceItem).GetFields();
-
-            foreach (FieldInfo prop in props)
-            {
-                var value = prop.GetValue(this);
-                if (!prop.Name.ToUpper().Contains("PROP") && value.ToString().Length > 0)
-                    build.Append(string.Format("{0}: {1}; ", prop.Name, prop.GetValue(this)));
-            }
-
-            return build.ToString();
         }
 
         private string NormalizeDollar(string num)
@@ -145,7 +154,7 @@ namespace Fineas.Models
                 // This prints out the unformatted number, raw from the database
                 return $"${num}";
             }
-            
+
             return $"${ret.ToString("#,##0.00")}";
         }
 

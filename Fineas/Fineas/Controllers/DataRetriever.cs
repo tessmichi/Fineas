@@ -43,7 +43,7 @@ namespace Fineas.Controllers
 
         public static List<FinanceItem> QueryFromData(string time, string item, string alias, DateTime date)
         {
-            time = time == null ? "" : time.Length > 0 ? time: "";
+            time = time == null ? "" : time.Length > 0 ? time : "";
             item = item == null ? "" : item.Length > 0 ? item : "";
             alias = alias == null ? "" : alias.Length > 0 ? alias : "";
 
@@ -69,8 +69,8 @@ namespace Fineas.Controllers
                     if (time.Equals("MTD", StringComparison.OrdinalIgnoreCase))
                     {
                         filteredRows = (from dataRow in filteredRows
-                                where DateTime.Parse(dataRow.Fiscal_Month).Month == date.Month
-                               select dataRow).ToList();
+                                        where DateTime.Parse(dataRow.Fiscal_Month).Month == date.Month
+                                        select dataRow).ToList();
                     }
                     else if (time.Equals("QTD", StringComparison.OrdinalIgnoreCase))
                     {
@@ -78,8 +78,8 @@ namespace Fineas.Controllers
                         quarter = (quarter > 4) ? quarter % 4 : quarter;
 
                         filteredRows = (from dataRow in filteredRows
-                               where Convert.ToInt32(dataRow.Fiscal_Quarter.Substring(dataRow.Fiscal_Quarter.Length - 1)) == quarter
-                               select dataRow).ToList();
+                                        where Convert.ToInt32(dataRow.Fiscal_Quarter.Substring(dataRow.Fiscal_Quarter.Length - 1)) == quarter
+                                        select dataRow).ToList();
                     }
 
                     res.AddRange(filteredRows);
@@ -87,13 +87,14 @@ namespace Fineas.Controllers
                 catch (KeyNotFoundException e)
                 {
                     // TODO: here is where we tell the user to try the query again.
+                    Console.WriteLine(e.Message);
                 }
                 catch (Exception e)
                 {
-
+                    Console.WriteLine(e.Message);
                 }
             }
-            
+
             return res.ToList();
         }
 
@@ -130,7 +131,7 @@ namespace Fineas.Controllers
             SetTimeOptions();
             SetItemDetails();
         }
-        
+
         private static void SetTimeOptions()
         {
             // TODO: not hardcode
@@ -194,6 +195,7 @@ namespace Fineas.Controllers
                                 }
                                 catch (IndexOutOfRangeException e)
                                 {
+                                    Console.WriteLine(e.Message);
                                 }
                             }
                         }
@@ -210,7 +212,7 @@ namespace Fineas.Controllers
         private static void GetDataForTable(string table, string alias)
         {
             table = table == null ? "" : table;
-            alias = alias == null ? "" : table;
+            alias = alias == null ? "" : alias;
             if (cachedResults.ContainsKey(table))
                 return;
 
@@ -257,6 +259,7 @@ namespace Fineas.Controllers
                                         catch (IndexOutOfRangeException e)
                                         {
                                             colsToIgnore.Add(col.Name);
+                                            Console.WriteLine(e.Message);
                                             Console.WriteLine(string.Format("Looks like one of our columns wasn't found: {0}", col));
                                         }
                                     }

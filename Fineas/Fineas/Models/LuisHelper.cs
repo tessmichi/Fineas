@@ -4,6 +4,7 @@ namespace Fineas.Models
 {
     using Newtonsoft.Json;
     using System;
+    using System.Linq;
     using System.Net.Http;
     using System.Threading.Tasks;
 
@@ -30,19 +31,28 @@ namespace Fineas.Models
                 }
             }
 
-            return null;
+            return LuisResponse.Unknown;
         }
     }
 
     public class LuisResponse
     {
+        public static LuisResponse Unknown = new LuisResponse();
+
         public string Query { get; set; }
         public LuisIntent[] Intents { get; set; }
         public LuisEntity[] Entities { get; set; }
+
+        public LuisIntent GetBestIntent()
+        {
+            return Intents.Aggregate((currMax, x) => (currMax == null || x.Score > currMax.Score ? x : currMax));
+        }
     }
 
     public class LuisIntent
     {
+        // "unkown" is covered by Intent = "None"
+
         public string Intent { get; set; }
         public float Score { get; set; }
     }
