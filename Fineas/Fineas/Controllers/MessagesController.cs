@@ -49,7 +49,7 @@ namespace Fineas
             {
                 Activity reply = message.CreateReply();
                 reply.Type = ActivityTypes.Message;
-                reply.Text = string.Format("Hi, I'm Fineas, the Finance Bot! I'm still learning how to bot. {0} Maybe one day I'll learn natural speech too!", ActionDialog.INSTRUCTIONS);
+                reply.Text = string.Format("Hi, I'm Fineas, the Finance Bot! I'm still learning how to bot. {0}", ActionDialog.INSTRUCTIONS);
                 return reply;
             }
 
