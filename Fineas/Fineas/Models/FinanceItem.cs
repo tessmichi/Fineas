@@ -50,14 +50,14 @@ namespace Fineas.Models
                     DateTime yearCurrent = Convert.ToDateTime(string.Format("January, 20{0}", Fiscal_Year.Substring(2)));
                     DateTime yearNext = yearCurrent.AddYears(1);
 
-                    if (!string.IsNullOrEmpty(Fiscal_Month.Trim()))
+                    if (!string.IsNullOrWhiteSpace(Fiscal_Month))
                     {
                         DateTime month = DateTime.Parse(Fiscal_Month);
                         return month.Month > 6 ?
                             yearNext.Year.ToString() :
                             yearCurrent.Year.ToString();
                     }
-                    else if (!string.IsNullOrEmpty(Fiscal_Quarter.Trim()))
+                    else if (!string.IsNullOrWhiteSpace(Fiscal_Quarter))
                     {
                         int quarter;
                         if (int.TryParse(Fiscal_Quarter.Substring(Fiscal_Quarter.Length - 1), out quarter))
@@ -101,6 +101,10 @@ namespace Fineas.Models
             string time = Fiscal_Month != string.Empty || Fiscal_Quarter != string.Empty ?
                 string.Format(" for {0}", (Fiscal_Month != string.Empty ? Fiscal_Month : Fiscal_Quarter)) :
                 string.Empty;
+
+            // TODO: should probabrly have different ways to handle each null
+            if (string.IsNullOrEmpty(Team) || string.IsNullOrEmpty(Line_Item))
+                return summaries;
 
             // Forecast
             summaries.Add(

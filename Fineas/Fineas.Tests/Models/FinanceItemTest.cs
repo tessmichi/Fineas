@@ -233,25 +233,7 @@ namespace Fineas.Tests.Models
         [TestMethod]
         public async Task TestGetSummariesUnknown()
         {
-            Dictionary<string, string> summaries = new Dictionary<string, string>();
-            summaries.Add(
-                "TED's Forecast Report for Morale",
-                "Could not parse database entry.");
-            summaries.Add(
-                "TED's Actual Report for Morale",
-                "Could not parse database entry.");
-            summaries.Add(
-                "TED's Variance to Forecast Report for Morale",
-                "Could not parse database entry.");
-
-            var unkownSummaries = FinanceItem.Unknown.GetSummaries();
-
-            foreach (string key in summaries.Keys)
-            {
-                Assert.AreEqual(unkownSummaries[key], summaries[key]);
-            }
-
-            Assert.AreEqual(unkownSummaries.Count, summaries.Count);
+            Assert.IsTrue(FinanceItem.Unknown.GetSummaries().Count == 0);
         }
 
         #endregion GetSummaries
