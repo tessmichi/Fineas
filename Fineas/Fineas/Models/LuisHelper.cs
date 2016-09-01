@@ -2,6 +2,7 @@
 
 namespace Fineas.Models
 {
+    using Microsoft.Bot.Builder.Luis.Models;
     using Newtonsoft.Json;
     using System;
     using System.Linq;
@@ -13,57 +14,10 @@ namespace Fineas.Models
         public static string LuisModelId;
         public static string LuisApiKey;
 
-        public static async Task<LuisResponse> ParseUserInput(string input)
+        public static IntentRecommendation BestIntent(LuisResult result)
         {
-            string inputEscaped = Uri.EscapeDataString(input);
-
-            using (var client = new HttpClient())
-            {
-                // TODO: move to config file
-                string uri = $"https://api.projectoxford.ai/luis/v1/application?id={LuisModelId}&subscription-key={LuisApiKey}&q={inputEscaped}";
-                HttpResponseMessage response = await client.GetAsync(uri);
-
-                if (response.IsSuccessStatusCode)
-                {
-                    var jsonResponse = await response.Content.ReadAsStringAsync();
-                    var luisResponse = JsonConvert.DeserializeObject<LuisResponse>(jsonResponse);
-                    return luisResponse;
-                }
-            }
-
-            return LuisResponse.Unknown;
+            return result.Intents.Aggregate((currMax, x) => (currMax == null || x.Score > currMax.Score) ? x : currMax);
         }
-    }
-
-    public class LuisResponse
-    {
-        public static LuisResponse Unknown = new LuisResponse();
-
-        public string Query { get; set; }
-        public LuisIntent[] Intents { get; set; }
-        public LuisEntity[] Entities { get; set; }
-
-        public LuisIntent GetBestIntent()
-        {
-            return Intents.Aggregate((currMax, x) => (currMax == null || x.Score > currMax.Score ? x : currMax));
-        }
-    }
-
-    public class LuisIntent
-    {
-        // "unkown" is covered by Intent = "None"
-
-        public string Intent { get; set; }
-        public float Score { get; set; }
-    }
-
-    public class LuisEntity
-    {
-        public string Entity { get; set; }
-        public string Type { get; set; }
-        public int StartIndex { get; set; }
-        public int EndIndex { get; set; }
-        public float Score { get; set; }
     }
 }
 

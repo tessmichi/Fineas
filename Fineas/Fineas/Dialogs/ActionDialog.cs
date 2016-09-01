@@ -9,6 +9,8 @@ namespace Fineas.Dialogs
     using Controllers;
     using Microsoft.Bot.Builder.Dialogs;
     using Microsoft.Bot.Builder.Dialogs.Internals;
+    using Microsoft.Bot.Builder.Luis;
+    using Microsoft.Bot.Builder.Luis.Models;
     using Microsoft.Bot.Connector;
     using Models;
     using System;
@@ -49,8 +51,10 @@ namespace Fineas.Dialogs
                     message.Text.Remove(message.Text.IndexOf(tag), tag.Length).Trim() :
                     message.Text.Trim();
 
-                LuisResponse luisResponse = await LuisHelper.ParseUserInput(message.Text);
-                LuisIntent bestIntent = luisResponse.GetBestIntent();
+                //LuisResponse luisResponse = await LuisHelper.ParseUserInput(message.Text);
+                var luisService = new LuisService(new LuisModelAttribute(LuisHelper.LuisModelId, LuisHelper.LuisApiKey));
+                var luisResult = await luisService.QueryAsync(message.Text);
+                IntentRecommendation bestIntent = LuisHelper.BestIntent(luisResult);
 
                 switch (bestIntent.Intent)
                 {
@@ -102,8 +106,8 @@ namespace Fineas.Dialogs
 
                     case "Query":
                         // Extract entities and store in context
-                        LuisEntity expenseEntity = luisResponse.Entities.FirstOrDefault((e) => e.Type == EXPENSE_ENTITY);
-                        LuisEntity timeEntity = luisResponse.Entities.FirstOrDefault((e) => e.Type == TIME_ENTITY);
+                        EntityRecommendation expenseEntity = luisResult.Entities.FirstOrDefault((e) => e.Type == EXPENSE_ENTITY);
+                        EntityRecommendation timeEntity = luisResult.Entities.FirstOrDefault((e) => e.Type == TIME_ENTITY);
                         if (expenseEntity != null)
                         {
                             context.PrivateConversationData.SetValue<string>(EXPENSE_ENTITY, expenseEntity.Entity);
