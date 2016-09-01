@@ -57,15 +57,17 @@ namespace Fineas.Models
                             yearNext.Year.ToString() :
                             yearCurrent.Year.ToString();
                     }
-                    else
+                    else if (!string.IsNullOrEmpty(Fiscal_Quarter.Trim()))
                     {
-                        int quarter = Convert.ToInt32(Fiscal_Quarter.Substring(Fiscal_Quarter.Length - 1));
-                        return quarter <= 2 && quarter >= 1 ?
-                            yearNext.Year.ToString() :
-                            quarter <= 4 && quarter >= 3 ?
-                                yearCurrent.Year.ToString() :
-                                string.Empty;
+                        int quarter;
+                        if (int.TryParse(Fiscal_Quarter.Substring(Fiscal_Quarter.Length - 1), out quarter))
+                            return quarter <= 2 && quarter >= 1 ?
+                                yearNext.Year.ToString() :
+                                quarter <= 4 && quarter >= 3 ?
+                                    yearCurrent.Year.ToString() :
+                                    string.Empty;
                     }
+                    return string.Empty;
                 }
                 catch (FormatException e)
                 {

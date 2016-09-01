@@ -4,8 +4,6 @@
 # Things I specifically don't want in here
 *.config
 Properties/
-*.csproj
-*.sln
 
 # User-specific files
 *.suo

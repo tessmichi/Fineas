@@ -10,16 +10,17 @@ namespace Fineas.Models
         // Everything is pretty obfuscated here.
         // private variables help obscure private static information which is stored in the proper format.
         // public variables represent everything as a string so the code using these objects is simpler.
+        // TODO: catch empty values in case web.config isn't filled out
 
         private static string _server = string.Empty;
         private static string _initialCatalog = string.Empty;
-        private static bool _persistSecurityInfo = false;
+        private static bool _persistSecurityInfo = true;
         private static string _userId = string.Empty;
         private static string _password = string.Empty;
-        private static bool _multipleActiveResultSets = false;
+        private static bool _multipleActiveResultSets = true;
         private static bool _encrypt = true;
-        private static bool _trustCertificate = false;
-        private static int _connectionTimeout = 30;
+        private static bool _trustCertificate = true;
+        private static int _connectionTimeout = int.MinValue;
         private static string _connectionString = string.Empty;
 
         public static string Server
@@ -54,7 +55,11 @@ namespace Fineas.Models
             }
             set
             {
-                _persistSecurityInfo = value == null ? false : Convert.ToBoolean(value);
+                bool val;
+                if (bool.TryParse(value, out val))
+                    _persistSecurityInfo = Convert.ToBoolean(val);
+                else
+                    _persistSecurityInfo = true;
             }
         }
 
@@ -90,7 +95,11 @@ namespace Fineas.Models
             }
             set
             {
-                _multipleActiveResultSets = value == null ? false : Convert.ToBoolean(value);
+                bool val;
+                if (bool.TryParse(value, out val))
+                    _multipleActiveResultSets = Convert.ToBoolean(val);
+                else
+                    _multipleActiveResultSets = true;
             }
         }
 
@@ -102,7 +111,11 @@ namespace Fineas.Models
             }
             set
             {
-                _encrypt = value == null ? true : Convert.ToBoolean(value);
+                bool val;
+                if (bool.TryParse(value, out val))
+                    _encrypt = Convert.ToBoolean(val);
+                else
+                    _encrypt = true;
             }
         }
 
@@ -114,7 +127,11 @@ namespace Fineas.Models
             }
             set
             {
-                _trustCertificate = value == null ? false : Convert.ToBoolean(value);
+                bool val;
+                if (bool.TryParse(value, out val))
+                    _trustCertificate = Convert.ToBoolean(val);
+                else
+                    _trustCertificate = true;
             }
         }
 
@@ -126,7 +143,11 @@ namespace Fineas.Models
             }
             set
             {
-                _connectionTimeout = value == null ? 30 : Convert.ToInt32(value);
+                int val;
+                if (value == null || !int.TryParse(value, out val))
+                    _connectionTimeout = int.MinValue;
+                else
+                    _connectionTimeout = val;
             }
         }
 
