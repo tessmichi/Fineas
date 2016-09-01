@@ -2,9 +2,12 @@
 
 namespace Fineas.Tests.Controllers
 {
+    using Fineas.Controllers;
+    using Microsoft.IdentityModel.Protocols;
     using Microsoft.VisualStudio.TestTools.UnitTesting;
     using System;
     using System.Collections.Generic;
+    using System.Configuration;
     using System.Linq;
     using System.Text;
     using System.Threading.Tasks;
@@ -12,6 +15,13 @@ namespace Fineas.Tests.Controllers
     [TestClass]
     public class DataRetriverTest
     {
+        public async Task TestLastRefresh()
+        {
+            DateTime now = DateTime.Now;
+            DataRetriever.GetAllData(ConfigurationManager.AppSettings["Alias"]);
+            Assert.IsTrue(DataRetriever.LastRefresh >= now);
+        }
+
         //#region QueryFromData
 
         //[TestMethod]

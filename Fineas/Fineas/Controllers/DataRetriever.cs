@@ -14,8 +14,8 @@ namespace Fineas.Controllers
     public class DataRetriever
     {
         // TODO: sql parameters
-        private static string qryGeneral = "select a.*, b.[Dx Team] from {0} a, FTEList_Team b where a.TEAM = b.TEAM AND upper(b.Email) = upper('{1}')";
-        private static string qryLineItems = "select distinct [line item], definition from securitylineitem where definition != ''";
+        private const string QUERY_GENERAL = "select a.*, b.[Dx Team] from {0} a, FTEList_Team b where a.TEAM = b.TEAM AND upper(b.Email) = upper('{1}')";
+        private const string QUERY_LINE_ITEMS = "select distinct [line item], definition from securitylineitem where definition != ''";
         private static string[] tables = {  "BotSummaryByMonth",
                                             "BotSummaryByQtr" };
 
@@ -26,6 +26,7 @@ namespace Fineas.Controllers
         private static DateTime lastRefresh = DateTime.MinValue;
 
         private static Dictionary<string, List<FinanceItem>> cachedResults = new Dictionary<string, List<FinanceItem>>();
+
         public static Dictionary<string, string> LineItemDescriptions = new Dictionary<string, string>();
 
         public static string[] TimeframeOptions = new string[0];
@@ -149,7 +150,7 @@ namespace Fineas.Controllers
             {
                 if (connection.ConnectionString.Length > 0)
                 {
-                    using (SqlCommand cmd = new SqlCommand(qryLineItems, connection))
+                    using (SqlCommand cmd = new SqlCommand(QUERY_LINE_ITEMS, connection))
                     {
                         connection.Open();
                         SqlDataReader reader = cmd.ExecuteReader();
@@ -224,7 +225,7 @@ namespace Fineas.Controllers
             {
                 if (connection.ConnectionString.Length > 0)
                 {
-                    string qry = qryGeneral;
+                    string qry = QUERY_GENERAL;
                     using (SqlCommand cmd = new SqlCommand(string.Format(qry, table, alias.ToUpper()), connection))
                     {
                         connection.Open();
