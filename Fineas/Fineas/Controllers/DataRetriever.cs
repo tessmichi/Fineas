@@ -29,7 +29,7 @@ namespace Fineas.Controllers
 
         public static Dictionary<string, string> LineItemDescriptions = new Dictionary<string, string>();
 
-        public static string[] TimeframeOptions = new string[0];
+        public static Dictionary<string, string[]> TimeframeOptions = new Dictionary<string, string[]>();
         public static string[] DataTypeOptions = new string[0];
 
         public static DateTime LastRefresh
@@ -48,12 +48,14 @@ namespace Fineas.Controllers
             item = item == null ? "" : item.Length > 0 ? item : "";
             alias = alias == null ? "" : alias.Length > 0 ? alias : "";
 
+            List<FinanceItem> res = new List<FinanceItem>();
+
+            time = ParseTime(time);
+
             // Only query from either month or quarter but not both or neither
             List<string> tableOptions = (from tbl in tables
                                          where tbl.ToUpper().Contains((time.ToUpper() == "MTD") ? "MONTH" : "QTR")
                                          select tbl).ToList();
-
-            List<FinanceItem> res = new List<FinanceItem>();
 
             // TODO: ensure there is only one table in tableOptions
             foreach (string table in tableOptions)
@@ -102,7 +104,6 @@ namespace Fineas.Controllers
         public static void DeleteAllData()
         {
             cachedResults.Clear();
-            TimeframeOptions = new string[0];
             DataTypeOptions = new string[0];
             LineItemDescriptions.Clear();
         }
@@ -117,7 +118,7 @@ namespace Fineas.Controllers
                 GetDataForTable(table, alias);
             }
 
-            SetMetaOptions();
+            SetItemDetails();
         }
 
         public static bool HaveData()
@@ -125,21 +126,25 @@ namespace Fineas.Controllers
             return cachedResults.Count > 0 && LineItemDescriptions.Count > 0;
         }
 
+        private static string ParseTime(string given)
+        {
+            string time = string.Empty;
+
+            foreach (string key in TimeframeOptions.Keys)
+            {
+                foreach (string option in TimeframeOptions[key])
+                {
+                    if (given.ToUpper().Contains(option.ToUpper()))
+                    {
+                        time = key;
+                    }
+                }
+            }
+
+            return time;
+        }
+
         #region Methods to Refresh / Get
-
-        private static void SetMetaOptions()
-        {
-            SetTimeOptions();
-            SetItemDetails();
-        }
-
-        private static void SetTimeOptions()
-        {
-            // TODO: not hardcode
-
-            string[] ops = { "MTD", "QTD" };
-            TimeframeOptions = ops;
-        }
 
         private static void SetItemDetails()
         {

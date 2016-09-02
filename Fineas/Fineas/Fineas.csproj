@@ -180,7 +180,6 @@
     <Compile Include="Controllers\DataRetriever.cs" />
     <Compile Include="Controllers\MessagesController.cs" />
     <Compile Include="Dialogs\ActionDialog.cs" />
-    <Compile Include="Dialogs\QueryDialog.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>

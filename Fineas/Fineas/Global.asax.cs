@@ -2,6 +2,7 @@
 
 namespace Fineas
 {
+    using Controllers;
     using Models;
     using System.Configuration;
     using System.Web.Http;
@@ -37,6 +38,20 @@ namespace Fineas
             Models.User.CORP_DOMAIN = ConfigurationManager.AppSettings["CorpDomain"];
 
             FinanceItem.SetProperties();
+            SetTimeOptions();
+        }
+
+        private static void SetTimeOptions()
+        {
+            // TODO: not hardcode
+            var timeframes = ConfigurationManager.AppSettings["TimeFrames"];
+
+            foreach (string options in timeframes.Split(';'))
+            {
+                string key = options.Split(':')[0];
+                string[] alternatives = options.Split(':')[1].Split(',');
+                DataRetriever.TimeframeOptions.Add(key, alternatives);
+            }
         }
     }
 }

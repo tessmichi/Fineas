@@ -153,7 +153,7 @@ namespace Fineas.Dialogs
             // TODO: i think at some states, these might not be filled in and so we get false negatives.
             // need a way to handle this in the message sent to the user.
 
-            return (new List<string>(DataRetriever.TimeframeOptions).Contains(text)
+            return (DataRetriever.TimeframeOptions.ContainsKey(text)
                 || new List<string>(DataRetriever.DataTypeOptions).Contains(text)
                 || DataRetriever.LineItemDescriptions.ContainsKey(text));
         }
@@ -376,7 +376,7 @@ namespace Fineas.Dialogs
             else if (!context.PrivateConversationData.TryGetValue<string>(TIME_ENTITY, out timePeriod))
             {
                 // Read response from user
-                PromptDialog.Choice(context, SaveTimeChoice, new List<string>(DataRetriever.TimeframeOptions), "What timeframe do you want?", "Let's try that again.", 2, PromptStyle.Auto);
+                PromptDialog.Choice(context, SaveTimeChoice, new List<string>(DataRetriever.TimeframeOptions.Keys), "What timeframe do you want?", "Let's try that again.", 2, PromptStyle.Auto);
             }
             else
             {
@@ -405,7 +405,7 @@ namespace Fineas.Dialogs
 
             // Now ask which timeframe choice they want
             if (await EnsureHaveDataAsync(context))
-                PromptDialog.Choice(context, SaveTimeChoice, new List<string>(DataRetriever.TimeframeOptions), "What timeframe do you want?", "Let's try that again.", 2, PromptStyle.Auto);
+                PromptDialog.Choice(context, SaveTimeChoice, new List<string>(DataRetriever.TimeframeOptions.Keys), "What timeframe do you want?", "Let's try that again.", 2, PromptStyle.Auto);
             else
                 context.Wait(MessageReceivedAsync);
         }

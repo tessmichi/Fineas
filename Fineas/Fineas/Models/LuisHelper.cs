@@ -3,11 +3,7 @@
 namespace Fineas.Models
 {
     using Microsoft.Bot.Builder.Luis.Models;
-    using Newtonsoft.Json;
-    using System;
     using System.Linq;
-    using System.Net.Http;
-    using System.Threading.Tasks;
 
     public class LuisHelper
     {

@@ -105,7 +105,6 @@
     <Compile Include="Controllers\DataRetrieverTest.cs" />
     <Compile Include="Controllers\MessageControllerTest.cs" />
     <Compile Include="Dialogs\ActionDialogTest.cs" />
-    <Compile Include="Dialogs\QueryDialogTest.cs" />
     <Compile Include="Models\FinanceItemTest.cs" />
     <Compile Include="Models\LuisHelperTest.cs" />
     <Compile Include="Models\SqlDbTest.cs" />
